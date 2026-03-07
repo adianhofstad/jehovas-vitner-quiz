@@ -2,463 +2,400 @@
 <html lang="no">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz: Jehovas Vitner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Racing Quiz: Jehovas Vitner</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Montserrat', -apple-system, sans-serif;
-            background: linear-gradient(135deg, #46178f 0%, #1a0533 100%);
-            min-height: 100vh;
+            background: #1a0533;
             color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            overflow: hidden;
+            height: 100vh; width: 100vw;
+            touch-action: none;
+            user-select: none; -webkit-user-select: none;
         }
-        #app {
-            width: 100%;
-            max-width: 900px;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        canvas { display: block; }
         .screen {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            gap: 18px;
+            display: none; position: fixed; inset: 0;
+            flex-direction: column; align-items: center; justify-content: center;
+            gap: 16px; padding: 20px; z-index: 10;
+            background: linear-gradient(135deg, #46178f 0%, #1a0533 100%);
             animation: fadeIn .3s ease;
         }
         .screen.active { display: flex; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes popIn {
-            from { transform: scale(0); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        @keyframes slideIn {
-            from { transform: translateX(-20px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        h1 { font-size: 2.4rem; font-weight: 900; text-align: center; line-height: 1.15; }
-        h2 { font-size: 1.4rem; font-weight: 700; text-align: center; }
-        .subtitle { font-size: .95rem; opacity: .7; text-align: center; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes popIn { from { transform:scale(0); opacity:0; } to { transform:scale(1); opacity:1; } }
+        h1 { font-size: 2.2rem; font-weight: 900; text-align: center; line-height: 1.15; }
+        h2 { font-size: 1.3rem; font-weight: 700; text-align: center; }
+        .subtitle { font-size: .92rem; opacity: .7; text-align: center; }
         input[type="text"] {
-            width: 100%; max-width: 340px; padding: 14px 20px; border: none;
-            border-radius: 8px; font-size: 1.1rem; font-family: inherit;
+            width: 100%; max-width: 320px; padding: 13px 18px; border: none;
+            border-radius: 8px; font-size: 1.05rem; font-family: inherit;
             text-align: center; background: rgba(255,255,255,.15); color: #fff;
-            backdrop-filter: blur(8px); outline: none; transition: background .2s;
+            outline: none;
         }
         input::placeholder { color: rgba(255,255,255,.45); }
         input:focus { background: rgba(255,255,255,.25); }
         .btn {
-            padding: 14px 44px; border: none; border-radius: 8px;
-            font-size: 1.05rem; font-weight: 700; font-family: inherit;
-            cursor: pointer; transition: transform .1s, box-shadow .2s;
-            text-transform: uppercase; letter-spacing: 1px;
+            padding: 13px 40px; border: none; border-radius: 8px;
+            font-size: 1rem; font-weight: 700; font-family: inherit;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            transition: transform .1s;
         }
-        .btn:hover { transform: scale(1.04); }
         .btn:active { transform: scale(.97); }
-        .btn-primary {
-            background: linear-gradient(135deg, #ff6b35, #f7c948);
-            color: #1a0533; box-shadow: 0 4px 18px rgba(255,107,53,.4);
-        }
-        .btn-secondary {
-            background: rgba(255,255,255,.18); color: #fff;
-            border: 2px solid rgba(255,255,255,.25);
-        }
+        .btn-primary { background: linear-gradient(135deg,#ff6b35,#f7c948); color: #1a0533; }
+        .btn-secondary { background: rgba(255,255,255,.18); color: #fff; border: 2px solid rgba(255,255,255,.25); }
         .divider {
             display: flex; align-items: center; gap: 14px;
-            width: 100%; max-width: 340px; color: rgba(255,255,255,.4); font-size: .85rem;
+            width: 100%; max-width: 320px; color: rgba(255,255,255,.4); font-size: .85rem;
         }
-        .divider::before, .divider::after {
-            content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.18);
-        }
+        .divider::before,.divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.18); }
         .room-code {
-            font-size: 3rem; font-weight: 900; letter-spacing: 10px;
-            background: rgba(255,255,255,.08); padding: 14px 32px; border-radius: 14px;
+            font-size: 2.8rem; font-weight: 900; letter-spacing: 10px;
+            background: rgba(255,255,255,.08); padding: 12px 28px; border-radius: 14px;
         }
-        .player-list {
-            display: flex; flex-wrap: wrap; gap: 10px;
-            justify-content: center; max-width: 600px;
+        .player-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:600px; }
+        .player-badge { padding:7px 18px; border-radius:20px; font-weight:600; font-size:.9rem; animation:popIn .3s ease; }
+
+        /* Quiz overlay */
+        #quiz-overlay {
+            display:none; position:fixed; inset:0; z-index:20;
+            background: rgba(10,5,30,.92);
+            flex-direction:column; align-items:center; justify-content:center;
+            padding:20px; gap:16px;
+            backdrop-filter: blur(6px);
         }
-        .player-badge {
-            padding: 8px 20px; border-radius: 22px;
-            font-weight: 600; font-size: .95rem; animation: popIn .3s ease;
+        #quiz-overlay.active { display:flex; }
+        .quiz-question {
+            font-size: 1.15rem; font-weight: 700; text-align:center;
+            max-width:560px; line-height:1.5;
+            padding: 20px 28px;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 16px;
         }
-        .question-container { width: 100%; }
-        .question-header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+        .quiz-options {
+            display:flex; flex-direction:column; gap:10px;
+            width:100%; max-width:480px;
         }
-        .question-number { font-size: .85rem; opacity: .6; }
-        .timer-text { font-size: 2.8rem; font-weight: 900; text-align: center; }
-        .timer-container {
-            width: 100%; height: 8px; background: rgba(255,255,255,.15);
-            border-radius: 4px; margin-bottom: 18px; overflow: hidden;
+        .quiz-opt {
+            display:flex; align-items:center; gap:14px;
+            padding: 15px 20px;
+            background: rgba(255,255,255,.07);
+            border: 2px solid rgba(255,255,255,.1);
+            border-radius: 12px;
+            font-size: 1rem; font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            transition: border-color .15s, background .15s;
         }
-        .timer-bar {
-            height: 100%; border-radius: 4px; transition: width .1s linear;
-            background: linear-gradient(to right, #66bb6a, #ffee58, #ef5350);
+        .quiz-opt:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.25); }
+        .quiz-opt .opt-letter {
+            width: 32px; height: 32px;
+            display:flex; align-items:center; justify-content:center;
+            border-radius: 50%;
+            background: rgba(255,255,255,.1);
+            font-weight: 800; font-size: .9rem;
+            flex-shrink: 0;
         }
-        .question-text {
-            font-size: 1.35rem; font-weight: 700; text-align: center;
-            padding: 24px; background: rgba(255,255,255,.1); border-radius: 12px;
-            margin-bottom: 18px; min-height: 70px; display: flex;
-            align-items: center; justify-content: center;
+        .quiz-opt.selected { border-color: #a78bfa; background: rgba(167,139,250,.15); }
+        .quiz-opt.correct-reveal { border-color: #4ade80; background: rgba(74,222,128,.15); }
+        .quiz-opt.correct-reveal .opt-letter { background: #4ade80; color: #000; }
+        .quiz-opt.wrong-reveal { border-color: #f87171; background: rgba(248,113,113,.1); opacity: .5; }
+        .quiz-opt:disabled { cursor:default; }
+        .quiz-feedback {
+            font-size:1.05rem; font-weight:700; text-align:center;
+            padding:10px 20px; border-radius:10px;
         }
-        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
-        .answer-btn {
-            padding: 18px 14px; border: none; border-radius: 8px;
-            font-size: 1.05rem; font-weight: 700; font-family: inherit; color: #fff;
-            cursor: pointer; transition: transform .1s, opacity .2s;
-            display: flex; align-items: center; gap: 10px; min-height: 66px; text-align: left;
+
+        /* Countdown */
+        #countdown-overlay {
+            display:none; position:fixed; inset:0; z-index:25;
+            background:rgba(0,0,0,.7);
+            align-items:center; justify-content:center;
+            font-size:8rem; font-weight:900;
+            text-shadow: 0 0 40px rgba(255,107,53,.6);
         }
-        .answer-btn:hover:not(:disabled) { transform: scale(1.03); }
-        .answer-btn:disabled { cursor: default; }
-        .answer-btn .shape { font-size: 1.2rem; flex-shrink: 0; }
-        .answer-btn:nth-child(1) { background: #e21b3c; }
-        .answer-btn:nth-child(2) { background: #1368ce; }
-        .answer-btn:nth-child(3) { background: #d89e00; }
-        .answer-btn:nth-child(4) { background: #26890c; }
-        .answer-btn.selected { outline: 4px solid #fff; outline-offset: -4px; }
-        .answer-btn.correct-reveal { outline: 4px solid #66bb6a; outline-offset: -4px; opacity: 1 !important; }
-        .answer-btn.dimmed { opacity: .35; }
-        .answer-status {
-            text-align: center; font-size: 1.1rem; font-weight: 700;
-            padding: 14px; border-radius: 8px; margin-top: 8px;
+        #countdown-overlay.active { display:flex; }
+
+        /* Results */
+        #results-overlay {
+            display:none; position:fixed; inset:0; z-index:20;
+            background:linear-gradient(135deg,#46178f 0%,#1a0533 100%);
+            flex-direction:column; align-items:center; justify-content:center;
+            gap:14px; padding:20px; overflow-y:auto;
         }
-        .your-result {
-            font-size: 1.3rem; font-weight: 800; text-align: center;
-            padding: 12px 24px; border-radius: 10px;
-            background: rgba(255,255,255,.08);
+        #results-overlay.active { display:flex; }
+        .results-item {
+            display:flex; align-items:center; padding:12px 18px;
+            background:rgba(255,255,255,.1); border-radius:8px;
+            width:100%; max-width:460px;
         }
-        .explanation-box {
-            background: rgba(255,255,255,.08); padding: 18px 24px; border-radius: 12px;
-            width: 100%; max-width: 600px; text-align: center;
+        .results-item:first-child {
+            background:linear-gradient(135deg,rgba(255,215,0,.25),rgba(255,215,0,.08));
+            border:1px solid rgba(255,215,0,.3);
         }
-        .explanation-box .correct-answer { font-size: 1.15rem; font-weight: 700; color: #66bb6a; margin-bottom: 6px; }
-        .explanation-box .explanation-text { font-size: .92rem; opacity: .85; line-height: 1.5; }
-        .leaderboard-list {
-            width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 8px;
+        .results-item .rank { font-size:1.2rem; font-weight:900; width:36px; text-align:center; }
+        .results-item .rname { flex:1; font-weight:600; margin-left:10px; }
+        .results-item .rtime { font-weight:700; font-size:.95rem; opacity:.8; }
+
+        /* Host spectator */
+        #host-overlay {
+            display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%);
+            z-index:8; padding:8px 20px; border-radius:10px;
+            background:rgba(0,0,0,.6); font-size:.85rem; font-weight:600;
+            backdrop-filter:blur(4px);
         }
-        .leaderboard-item {
-            display: flex; align-items: center; padding: 12px 18px;
-            background: rgba(255,255,255,.1); border-radius: 8px;
-            animation: slideIn .3s ease backwards;
+        #host-overlay.active { display:block; }
+
+        /* Mobile controls */
+        #mobile-controls {
+            display:none; position:fixed; bottom:0; left:0; right:0;
+            z-index:5; padding:10px 20px 30px;
+            justify-content:space-between; gap:20px;
         }
-        .leaderboard-item .rank { font-size: 1.2rem; font-weight: 900; width: 36px; text-align: center; }
-        .leaderboard-item .name { flex: 1; font-weight: 600; margin-left: 10px; }
-        .leaderboard-item .score { font-weight: 700; font-size: 1.05rem; }
-        .leaderboard-item .pts { font-size: .8rem; opacity: .6; margin-left: 8px; }
-        .leaderboard-item:first-child {
-            background: linear-gradient(135deg, rgba(255,215,0,.25), rgba(255,215,0,.08));
-            border: 1px solid rgba(255,215,0,.3);
+        .ctrl-btn {
+            flex:1; padding:22px; border:none; border-radius:12px;
+            font-size:1.8rem; font-weight:900;
+            background:rgba(255,255,255,.15); color:#fff;
+            cursor:pointer; -webkit-tap-highlight-color:transparent;
         }
-        .trophy { font-size: 4rem; }
-        .winner { font-size: 1.6rem; font-weight: 900; color: #ffd700; text-align: center; }
-        .error-box {
-            position: fixed; inset: 0; display: flex; flex-direction: column; gap: 16px;
-            align-items: center; justify-content: center;
-            background: linear-gradient(135deg, #46178f, #1a0533);
-            color: #fff; font-family: 'Montserrat', sans-serif;
-            padding: 30px; text-align: center; z-index: 999;
-        }
-        .error-box code {
-            background: rgba(255,255,255,.12); padding: 14px 20px; border-radius: 8px;
-            font-size: .9rem; max-width: 500px; word-break: break-all;
-        }
-        @media (max-width: 600px) {
-            h1 { font-size: 1.7rem; }
-            .room-code { font-size: 2.2rem; letter-spacing: 6px; }
-            .question-text { font-size: 1.15rem; padding: 16px; }
-            .answer-btn { padding: 14px 10px; font-size: .92rem; min-height: 58px; }
-            .timer-text { font-size: 2rem; }
+        .ctrl-btn:active { background:rgba(255,255,255,.3); }
+        @media(max-width:700px){
+            h1{font-size:1.6rem}
+            .room-code{font-size:2rem;letter-spacing:6px}
+            .quiz-question{font-size:1rem;padding:14px 18px}
+            .quiz-opt{padding:12px 16px;font-size:.92rem}
         }
     </style>
 </head>
 <body>
-<div id="app">
-    <!-- START -->
-    <div id="screen-start" class="screen active">
-        <h1>Jehovas Vitner<br>Quiz</h1>
-        <p class="subtitle">KRLE &middot; 10. klasse</p>
-        <input type="text" id="input-name" placeholder="Skriv ditt navn" maxlength="20" autocomplete="off">
-        <button class="btn btn-primary" id="btn-create">Opprett spill</button>
-        <div class="divider">eller</div>
-        <input type="text" id="input-code" placeholder="Skriv spillkode" maxlength="6" inputmode="numeric" autocomplete="off">
-        <button class="btn btn-secondary" id="btn-join">Bli med i spill</button>
-    </div>
+<canvas id="game-canvas"></canvas>
 
-    <!-- LOBBY -->
-    <div id="screen-lobby" class="screen">
-        <p class="subtitle">Del denne koden med klassen:</p>
-        <div class="room-code" id="display-code"></div>
-        <p class="subtitle"><span id="player-count">0</span> spillere</p>
-        <div class="player-list" id="player-list"></div>
-        <button class="btn btn-primary" id="btn-start" style="display:none">Start spill</button>
-        <p class="subtitle" id="waiting-host" style="display:none">Venter på at verten starter spillet&hellip;</p>
-    </div>
+<!-- START -->
+<div id="screen-start" class="screen active">
+    <h1>Jehovas Vitner<br>Racing Quiz</h1>
+    <p class="subtitle">KRLE &middot; 10. klasse</p>
+    <button class="btn btn-primary" id="btn-create">Opprett spill</button>
+    <div class="divider">eller bli med</div>
+    <input type="text" id="input-name" placeholder="Skriv ditt navn" maxlength="20" autocomplete="off">
+    <input type="text" id="input-code" placeholder="Skriv spillkode" maxlength="6" inputmode="numeric" autocomplete="off">
+    <button class="btn btn-secondary" id="btn-join">Bli med i spill</button>
+</div>
 
-    <!-- QUESTION -->
-    <div id="screen-question" class="screen">
-        <div class="question-container">
-            <div class="question-header">
-                <span class="question-number" id="q-number"></span>
-            </div>
-            <div class="timer-text" id="timer-text">15</div>
-            <div class="timer-container"><div class="timer-bar" id="timer-bar"></div></div>
-            <div class="question-text" id="q-text"></div>
-            <div class="answers-grid" id="answers-grid"></div>
-            <div class="answer-status" id="answer-status" style="display:none"></div>
-        </div>
-    </div>
+<!-- LOBBY -->
+<div id="screen-lobby" class="screen">
+    <p class="subtitle">Del denne koden:</p>
+    <div class="room-code" id="display-code"></div>
+    <p class="subtitle"><span id="player-count">0</span> spillere</p>
+    <div class="player-list" id="player-list"></div>
+    <button class="btn btn-primary" id="btn-start" style="display:none">Start race!</button>
+    <p class="subtitle" id="waiting-host" style="display:none">Venter p&aring; at verten starter&hellip;</p>
+</div>
 
-    <!-- LEADERBOARD -->
-    <div id="screen-leaderboard" class="screen">
-        <div class="your-result" id="your-result"></div>
-        <div class="explanation-box">
-            <div class="correct-answer" id="correct-answer"></div>
-            <div class="explanation-text" id="explanation-text"></div>
-        </div>
-        <h2>Poengtavle</h2>
-        <div class="leaderboard-list" id="leaderboard-list"></div>
-        <button class="btn btn-primary" id="btn-next" style="display:none">Neste sporsmal</button>
-    </div>
+<!-- COUNTDOWN -->
+<div id="countdown-overlay"></div>
 
-    <!-- END -->
-    <div id="screen-end" class="screen">
-        <div class="trophy">&#127942;</div>
-        <h1>Spillet er over!</h1>
-        <div class="winner" id="winner-name"></div>
-        <h2 style="margin-top:10px">Endelig rangering</h2>
-        <div class="leaderboard-list" id="final-list"></div>
-        <button class="btn btn-primary" id="btn-again">Spill igjen</button>
-    </div>
+<!-- QUIZ -->
+<div id="quiz-overlay">
+    <div class="subtitle" id="quiz-cp-label"></div>
+    <div class="quiz-question" id="quiz-question"></div>
+    <div class="quiz-options" id="quiz-options"></div>
+    <div class="quiz-feedback" id="quiz-feedback" style="display:none"></div>
+</div>
+
+<!-- HOST OVERLAY -->
+<div id="host-overlay">Tilskuermodus &mdash; du ser racet</div>
+
+<!-- RESULTS -->
+<div id="results-overlay">
+    <div style="font-size:3.5rem">&#127942;</div>
+    <h1 id="results-title">Resultater</h1>
+    <div id="results-list" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:460px"></div>
+    <button class="btn btn-primary" id="btn-again">Spill igjen</button>
+</div>
+
+<!-- MOBILE CONTROLS -->
+<div id="mobile-controls">
+    <button class="ctrl-btn" id="ctrl-left">&larr;</button>
+    <button class="ctrl-btn" id="ctrl-right">&rarr;</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
-// ================================================================
-// FIREBASE KONFIGURASJON
-// Ga til https://console.firebase.google.com
-// 1. Opprett nytt prosjekt (sla av Google Analytics)
-// 2. Build -> Realtime Database -> Create Database -> Start in TEST mode
-// 3. Prosjektinnstillinger (tannhjul) -> legg config-verdiene under:
-// ================================================================
 const firebaseConfig = {
-    apiKey: "FYLL_INN",
-    authDomain: "FYLL_INN.firebaseapp.com",
-    databaseURL: "https://FYLL_INN-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "FYLL_INN",
-    storageBucket: "FYLL_INN.appspot.com",
-    messagingSenderId: "FYLL_INN",
-    appId: "FYLL_INN"
+    apiKey: "AIzaSyAq62AEMz7qVdFZW8Bs89-h2ZZXtrX-1gY",
+    authDomain: "jehovas-vitner-quiz.firebaseapp.com",
+    databaseURL: "https://jehovas-vitner-quiz-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "jehovas-vitner-quiz",
+    storageBucket: "jehovas-vitner-quiz.firebasestorage.app",
+    messagingSenderId: "357163951154",
+    appId: "1:357163951154:web:7e1685d90b7f748d7d882b"
 };
-
-// Sjekk at Firebase er konfigurert
-if (firebaseConfig.apiKey === "FYLL_INN") {
-    document.getElementById('app').innerHTML =
-        '<div class="error-box">' +
-        '<h1>Firebase ikke konfigurert</h1>' +
-        '<p>Apne index.html og fyll inn firebaseConfig-verdiene dine.</p>' +
-        '<code>const firebaseConfig = { apiKey: "...", ... }</code>' +
-        '</div>';
-    throw new Error("Firebase ikke konfigurert");
-}
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // ================================================================
-// SPORSMAAL (18 stk)
+// QUESTIONS
 // ================================================================
 const questions = [
-    {
-        q: "Hva kaller Jehovas vitner sitt motelokale?",
-        options: ["Kirke", "Moske", "Rikets sal", "Tempel"],
-        correct: 2,
-        explanation: "Jehovas vitner samles i \u00abRikets sal\u00bb, ikke i kirker eller templer."
-    },
-    {
-        q: "Feirer Jehovas vitner jul?",
-        options: ["Ja, som alle andre", "Nei", "Bare julaften", "Kun med familien"],
-        correct: 1,
-        explanation: "De mener jul har hedensk opprinnelse og feirer den ikke."
-    },
-    {
-        q: "Hva er Jehovas vitners holdning til blodoverforing?",
-        options: ["De aksepterer det", "Kun i nodstilfeller", "De nekter", "Bare for voksne"],
-        correct: 2,
-        explanation: "Basert pa deres tolkning av Bibelen (Apostlenes gjerninger 15:28\u201329) nekter de blodoverforing."
-    },
-    {
-        q: "Hva heter det mest kjente tidsskriftet til Jehovas vitner?",
-        options: ["Troens vei", "Vakttarnet", "Guds rike", "Lyset"],
-        correct: 1,
-        explanation: "\u00abVakttarnet\u00bb er et av verdens mest distribuerte tidsskrifter."
-    },
-    {
-        q: "Hva mener Jehovas vitner er Guds rette navn?",
-        options: ["Jahve", "Elohim", "Jehova", "Adonai"],
-        correct: 2,
-        explanation: "Navnet \u00abJehova\u00bb er sentralt i deres tro og kommer fra det hebraiske tetragrammet JHVH."
-    },
-    {
-        q: "Hva kalles aktiviteten der Jehovas vitner gar fra dor til dor?",
-        options: ["Misjon", "Pilegrimsreise", "Evangelisering", "Forkynnelse"],
-        correct: 3,
-        explanation: "Dor-til-dor-forkynnelse er en viktig del av deres religiose praksis."
-    },
-    {
-        q: "Feirer Jehovas vitner bursdag?",
-        options: ["Ja", "Nei", "Bare for barn", "Bare runde ar"],
-        correct: 1,
-        explanation: "De mener bursdagsfeiringer har hedensk opprinnelse og feirer dem ikke."
-    },
-    {
-        q: "Hva kaller Jehovas vitner sin overste ledelse?",
-        options: ["Paven", "Eldsteradet", "Det styrende rad", "Bisperadet"],
-        correct: 2,
-        explanation: "Det styrende rad leder organisasjonen fra hovedkvarteret i Warwick, New York."
-    },
-    {
-        q: "Hvilken hoytid feirer Jehovas vitner hvert ar?",
-        options: ["Jul", "Paske", "Minnehoytiden", "Pinse"],
-        correct: 2,
-        explanation: "Minnehoytiden (Herrens kveldsmaltid) er den eneste hoytiden de feirer, til minne om Jesu dod."
-    },
-    {
-        q: "Stemmer Jehovas vitner ved politiske valg?",
-        options: ["Ja, alltid", "Kun ved stortingsvalg", "Nei", "Bare lokalt"],
-        correct: 2,
-        explanation: "De er politisk noytrale og deltar ikke i valg."
-    },
-    {
-        q: "Tror Jehovas vitner pa treenigheten?",
-        options: ["Ja", "Nei", "Delvis", "Kun Faderen og Sonnen"],
-        correct: 1,
-        explanation: "De avviser treenigheten. De tror Jesus er Guds sonn, men ikke Gud selv."
-    },
-    {
-        q: "Hva kalles det nar noen blir utstott fra Jehovas vitner?",
-        options: ["Bannlysning", "Ekskommunikasjon", "Eksklusjon", "Utestengelse"],
-        correct: 2,
-        explanation: "Ekskluderte medlemmer kan miste kontakt med familie og venner i menigheten."
-    },
-    {
-        q: "Hvilken bibeloversettelse bruker Jehovas vitner primert?",
-        options: ["Bibel 2011", "King James-bibelen", "Ny Verden-oversettelsen", "Den hellige skrift"],
-        correct: 2,
-        explanation: "Ny Verden-oversettelsen er utgitt av Jehovas vitner og brukes i deres studier og forkynnelse."
-    },
-    {
-        q: "Hvem grunnla bevegelsen som ble til Jehovas vitner?",
-        options: ["Joseph Smith", "Martin Luther", "Charles T. Russell", "John Wesley"],
-        correct: 2,
-        explanation: "Charles Taze Russell startet bibelstudentbevegelsen pa 1870-tallet i USA."
-    },
-    {
-        q: "Hvor mange tror Jehovas vitner skal styre med Kristus i himmelen?",
-        options: ["12 000", "144 000", "1 million", "Alle troende"],
-        correct: 1,
-        explanation: "Basert pa Apenbaringen 7:4 tror de at 144 000 utvalgte skal herske med Kristus. Resten vil leve pa en paradisisk jord."
-    },
-    {
-        q: "Deltar Jehovas vitner i militertjeneste?",
-        options: ["Ja", "Kun i forsvar", "Nei", "Bare siviltjeneste"],
-        correct: 2,
-        explanation: "De nekter militertjeneste av samvittighetsgrunner og noytralitet."
-    },
-    {
-        q: "Hva tror Jehovas vitner vil skje i den nere fremtid?",
-        options: ["Ingenting spesielt", "Harmageddon", "Ragnarok", "Jordens undergang"],
-        correct: 1,
-        explanation: "De tror Guds krig, Harmageddon, vil odelegge ondskapen og innlede et paradis pa jorden."
-    },
-    {
-        q: "Hva er adressen til Jehovas vitners offisielle nettside?",
-        options: ["watchtower.org", "jw.org", "jehovah.com", "witness.net"],
-        correct: 1,
-        explanation: "jw.org er deres offisielle nettside med informasjon pa over 1000 sprak."
-    }
+    { q:"Hva kaller Jehovas vitner sitt m\u00f8telokale?", options:["Kirke","Mosk\u00e9","Rikets sal","Tempel"], correct:2 },
+    { q:"Hva er Jehovas vitners holdning til blodoverf\u00f8ring?", options:["De aksepterer det","Kun i n\u00f8dstilfeller","De nekter","Bare for voksne"], correct:2 },
+    { q:"Hva mener Jehovas vitner er Guds rette navn?", options:["Jahve","Elohim","Jehova","Adonai"], correct:2 },
+    { q:"Tror Jehovas vitner p\u00e5 treenigheten?", options:["Ja","Nei","Delvis","Kun Faderen og S\u00f8nnen"], correct:1 },
+    { q:"Hvor mange tror de skal styre med Kristus i himmelen?", options:["12 000","144 000","1 million","Alle troende"], correct:1 }
 ];
+
+// ================================================================
+// TRACK — road center X in world-space at each distance
+// Car has a worldX that must be steered to follow the road.
+// ================================================================
+const TRACK_LENGTH = 8000;
+const ROAD_W = 210;
+const CAR_W = 26, CAR_H = 46;
+const BASE_SPEED = 3.0;
+const BOOST_SPEED = 6.0;
+const GRASS_SLOW = 1.0;
+const STEER_SPEED = 3.8;
+const CHECKPOINT_DISTS = [1200, 2800, 4400, 6000, 7600];
+const FINISH_DIST = TRACK_LENGTH;
+
+// Curve control points [dist, worldCenterX]
+const CURVES = [
+    [0,0],[300,0],
+    [600,100],[1000,220],[1200,180],   // right then checkpoint
+    [1500,60],[1900,-120],[2300,-240],[2600,-160],[2800,-60], // left, checkpoint
+    [3100,80],[3400,230],[3700,160],[3900,20],
+    [4200,-160],[4400,-100],           // checkpoint
+    [4700,40],[5000,200],[5300,320],[5600,240],[5800,80],
+    [6000,0],                          // checkpoint
+    [6300,-200],[6600,-340],[6900,-200],[7100,40],
+    [7400,220],[7600,140],             // checkpoint
+    [7800,40],[8000,0]                 // finish
+];
+
+function roadCenterX(dist) {
+    if (dist <= CURVES[0][0]) return CURVES[0][1];
+    if (dist >= CURVES[CURVES.length-1][0]) return CURVES[CURVES.length-1][1];
+    for (let i = 0; i < CURVES.length-1; i++) {
+        const [d0,x0] = CURVES[i], [d1,x1] = CURVES[i+1];
+        if (dist >= d0 && dist <= d1) {
+            const t = (dist-d0)/(d1-d0);
+            const s = t*t*(3-2*t); // smoothstep
+            return x0+(x1-x0)*s;
+        }
+    }
+    return 0;
+}
+
+const PENALTIES = [
+    {name:'ink',duration:4000},{name:'ice',duration:5000},
+    {name:'reverse',duration:5000},{name:'slow',duration:5000},
+    {name:'spin',duration:2000}
+];
+const CAR_COLORS = ['#e21b3c','#1368ce','#d89e00','#26890c','#9b59b6','#e67e22','#1abc9c','#3498db','#2ecc71','#e74c3c'];
 
 // ================================================================
 // STATE
 // ================================================================
-let myName = '';
-let roomCode = '';
-let roomRef = null;
-let isHost = false;
-let currentState = '';
-let currentQuestionIndex = 0;
-let timerInterval = null;
-let hasAnswered = false;
-let isTransitioning = false;
-let serverTimeOffset = 0;
+let myName = '', roomCode = '', roomRef = null, isHost = false;
+let gameState = 'menu';
+// Car: worldX = absolute horizontal pos, dist = distance along track
+let car = { worldX: 0, dist: 0, speed: BASE_SPEED };
+let nextCheckpoint = 0, finished = false, finishTime = null, raceStartTime = 0;
+let steerLeft = false, steerRight = false;
+let activePenalty = null, penaltyEndTime = 0, boostEndTime = 0;
+let otherPlayers = {};
+let obstacles = [], grassTufts = [];
+let inkBlobs = [];
+let lastSync = 0;
+const SYNC_INTERVAL = 125;
+// Host spectator: which player to follow
+let spectateTarget = null;
 
-db.ref('.info/serverTimeOffset').on('value', s => { serverTimeOffset = s.val() || 0; });
-function serverNow() { return Date.now() + serverTimeOffset; }
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W=window.innerWidth; H=window.innerHeight; canvas.width=W; canvas.height=H; }
+window.addEventListener('resize', resize); resize();
+
+// ================================================================
+// SEEDED RANDOM & OBSTACLE GEN
+// ================================================================
+function seededRandom(seed) {
+    let s=seed;
+    return function(){ s=(s*16807)%2147483647; return(s-1)/2147483646; };
+}
+function generateObstacles(seed) {
+    const rng = seededRandom(seed);
+    obstacles = []; grassTufts = [];
+    for (let d = 200; d < FINISH_DIST-200; d += 90+rng()*70) {
+        let nearCP = false;
+        for (const cp of CHECKPOINT_DISTS) if (Math.abs(d-cp)<180) nearCP=true;
+        if (Math.abs(d-FINISH_DIST)<180) nearCP=true;
+        if (nearCP) continue;
+        const rc = roadCenterX(d);
+        const offset = rc + (rng()-0.5)*(ROAD_W-50);
+        const type = rng()<0.3?'cone':rng()<0.55?'oil':'barrier';
+        obstacles.push({ dist:d, worldX:offset, type,
+            w: type==='barrier'?48:20, h: type==='barrier'?14:20 });
+    }
+    for (let d=0; d<FINISH_DIST+400; d+=25+rng()*35) {
+        const rc = roadCenterX(d);
+        const side = rng()<0.5?-1:1;
+        const off = ROAD_W/2+15+rng()*180;
+        grassTufts.push({ dist:d, worldX: rc+side*off, size:3+rng()*7, dark:rng()>0.5 });
+    }
+}
 
 // ================================================================
 // HELPERS
 // ================================================================
-const badgeColors = ['#e21b3c','#1368ce','#d89e00','#26890c','#9b59b6','#e67e22','#1abc9c','#e74c3c','#3498db','#2ecc71'];
-function nameColor(name) {
-    let h = 0;
-    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-    return badgeColors[Math.abs(h) % badgeColors.length];
-}
-function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-' + id).classList.add('active');
-}
-function generateCode() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function generateCode(){return Math.floor(100000+Math.random()*900000).toString();}
+function nameColor(name){let h=0;for(let i=0;i<name.length;i++)h=name.charCodeAt(i)+((h<<5)-h);return CAR_COLORS[Math.abs(h)%CAR_COLORS.length];}
+
+// World to screen: camera follows a target worldX and dist
+function toScreen(worldX, dist, camWorldX, camDist) {
+    return { x: worldX - camWorldX + W/2, y: H*0.75 - (dist - camDist) };
 }
 
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));const el=document.getElementById('screen-'+id);if(el)el.classList.add('active');}
+function hideAllScreens(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));}
+
 // ================================================================
-// CREATE ROOM
+// CREATE / JOIN ROOM
 // ================================================================
 async function createRoom() {
+    myName = '__host__';
     roomCode = generateCode();
-    roomRef = db.ref('rooms/' + roomCode);
+    roomRef = db.ref('rooms/'+roomCode);
     isHost = true;
-    await roomRef.set({
-        host: myName,
-        state: 'lobby',
-        currentQuestion: 0,
-        questionStartedAt: 0,
-        players: { [myName]: { score: 0, answer: null, answeredAt: null, lastPoints: 0 } }
-    });
+    const seed = Math.floor(Math.random()*999999)+1;
+    await roomRef.set({ host:'__host__', state:'lobby', seed });
     document.getElementById('display-code').textContent = roomCode;
     document.getElementById('btn-start').style.display = '';
     document.getElementById('waiting-host').style.display = 'none';
+    gameState = 'lobby';
     showScreen('lobby');
     listenToRoom();
 }
-
-// ================================================================
-// JOIN ROOM
-// ================================================================
 async function joinRoom() {
-    roomRef = db.ref('rooms/' + roomCode);
+    roomRef = db.ref('rooms/'+roomCode);
     const snap = await roomRef.once('value');
-    if (!snap.exists()) { alert('Finner ikke spillet. Sjekk koden.'); return; }
-    const data = snap.val();
-    if (data.state !== 'lobby') { alert('Spillet har allerede startet.'); return; }
-    if (data.players && data.players[myName]) { alert('Navnet er allerede tatt. Velg et annet.'); return; }
-    await roomRef.child('players/' + myName).set({ score: 0, answer: null, answeredAt: null, lastPoints: 0 });
+    if(!snap.exists()){alert('Finner ikke spillet.');return;}
+    const data=snap.val();
+    if(data.state!=='lobby'){alert('Spillet har allerede startet.');return;}
+    if(data.players&&data.players[myName]){alert('Navnet er tatt.');return;}
+    await roomRef.child('players/'+myName).set({ worldX:0, dist:0, speed:BASE_SPEED, finished:false, finishTime:null, checkpoint:0 });
     document.getElementById('display-code').textContent = roomCode;
     document.getElementById('btn-start').style.display = 'none';
     document.getElementById('waiting-host').style.display = '';
+    gameState = 'lobby';
     showScreen('lobby');
     listenToRoom();
 }
@@ -468,283 +405,464 @@ async function joinRoom() {
 // ================================================================
 function listenToRoom() {
     roomRef.on('value', snap => {
-        const data = snap.val();
-        if (!data) return;
-        // Always update player list
-        renderPlayerList(data.players || {});
-        // State transitions
-        if (data.state !== currentState) {
-            currentState = data.state;
-            isTransitioning = false;
-            switch (data.state) {
-                case 'lobby': showScreen('lobby'); break;
-                case 'question': handleQuestion(data); break;
-                case 'leaderboard': handleLeaderboard(data); break;
-                case 'finished': handleFinished(data); break;
+        const data=snap.val(); if(!data) return;
+        const players = data.players||{};
+        const names = Object.keys(players);
+        document.getElementById('player-list').innerHTML = names.map(n =>
+            '<div class="player-badge" style="background:'+nameColor(n)+'">'+esc(n)+'</div>'
+        ).join('');
+        document.getElementById('player-count').textContent = names.length;
+
+        // Cache other players (for racer: everyone else; for host: everyone)
+        otherPlayers = {};
+        for (const [n,d] of Object.entries(players)) {
+            if (n !== myName) otherPlayers[n] = d;
+        }
+        // Host picks spectate target: leading player
+        if (isHost && names.length > 0) {
+            let best = null, bestDist = -1;
+            for (const [n,d] of Object.entries(players)) {
+                if ((d.dist||0) > bestDist) { bestDist=d.dist||0; best=n; }
             }
+            spectateTarget = best;
         }
-        // Host: check if all answered
-        if (isHost && currentState === 'question' && !isTransitioning && data.players) {
-            const all = Object.values(data.players).every(p => p.answer !== null && p.answer !== undefined);
-            if (all) {
-                clearInterval(timerInterval);
-                doTransitionToLeaderboard();
-            }
+
+        if (data.state==='racing' && gameState==='lobby') {
+            generateObstacles(data.seed||1);
+            if (isHost) startHostSpectate();
+            else startCountdown();
         }
+        if (data.state==='finished' && gameState!=='finished') showResults(data);
     });
 }
 
 // ================================================================
-// RENDER PLAYER LIST
+// HOST SPECTATOR MODE
 // ================================================================
-function renderPlayerList(players) {
-    const names = Object.keys(players);
-    document.getElementById('player-list').innerHTML = names.map(n =>
-        '<div class="player-badge" style="background:' + nameColor(n) + '">' + esc(n) + '</div>'
+function startHostSpectate() {
+    gameState = 'racing';
+    hideAllScreens();
+    document.getElementById('host-overlay').classList.add('active');
+    requestAnimationFrame(hostLoop);
+}
+function hostLoop() {
+    if (gameState!=='racing') return;
+    renderHost();
+    requestAnimationFrame(hostLoop);
+}
+function renderHost() {
+    ctx.clearRect(0,0,W,H);
+    // Follow leading player
+    let camX=0, camD=0;
+    if (spectateTarget && otherPlayers[spectateTarget]) {
+        camX = otherPlayers[spectateTarget].worldX||0;
+        camD = otherPlayers[spectateTarget].dist||0;
+    }
+    drawWorld(camX, camD);
+    // Draw all players
+    for (const [name,d] of Object.entries(otherPlayers)) {
+        const pos = toScreen(d.worldX||0, d.dist||0, camX, camD);
+        if (pos.y < -100 || pos.y > H+100) continue;
+        drawCar(pos.x, pos.y, nameColor(name), 1, name, 0);
+    }
+    // HUD: all player progress
+    drawProgressHUD(camX, camD, true);
+}
+
+// ================================================================
+// PLAYER COUNTDOWN & GAME
+// ================================================================
+function startCountdown() {
+    gameState='countdown'; hideAllScreens();
+    const ov=document.getElementById('countdown-overlay');
+    ov.classList.add('active');
+    let count=3; ov.textContent=count;
+    // Init car at road center of start
+    car.worldX = roadCenterX(0);
+    car.dist=0; car.speed=BASE_SPEED;
+    nextCheckpoint=0; finished=false; finishTime=null;
+    activePenalty=null; penaltyEndTime=0; boostEndTime=0; inkBlobs=[];
+    const iv=setInterval(()=>{
+        count--;
+        if(count>0) ov.textContent=count;
+        else if(count===0) ov.textContent='KJ\u00D8R!';
+        else { clearInterval(iv); ov.classList.remove('active'); gameState='racing'; raceStartTime=performance.now(); showMobileControls(true); requestAnimationFrame(gameLoop); }
+    },800);
+}
+
+// Mobile
+function isMobile(){return 'ontouchstart' in window||navigator.maxTouchPoints>0;}
+function showMobileControls(s){document.getElementById('mobile-controls').style.display=(s&&isMobile())?'flex':'none';}
+document.getElementById('ctrl-left').addEventListener('touchstart',e=>{e.preventDefault();steerLeft=true;});
+document.getElementById('ctrl-left').addEventListener('touchend',e=>{e.preventDefault();steerLeft=false;});
+document.getElementById('ctrl-right').addEventListener('touchstart',e=>{e.preventDefault();steerRight=true;});
+document.getElementById('ctrl-right').addEventListener('touchend',e=>{e.preventDefault();steerRight=false;});
+window.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')steerLeft=true;if(e.key==='ArrowRight')steerRight=true;});
+window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft')steerLeft=false;if(e.key==='ArrowRight')steerRight=false;});
+
+// ================================================================
+// GAME LOOP
+// ================================================================
+function gameLoop() {
+    if(gameState!=='racing'&&gameState!=='checkpoint') return;
+    update(); render(); requestAnimationFrame(gameLoop);
+}
+
+// ================================================================
+// UPDATE
+// ================================================================
+function update() {
+    if(gameState!=='racing'||finished) return;
+    const now=performance.now();
+    // Speed
+    let speed=BASE_SPEED;
+    if(now<boostEndTime) speed=BOOST_SPEED;
+    if(activePenalty==='slow'&&now<penaltyEndTime) speed=BASE_SPEED*0.5;
+    if(activePenalty==='spin'&&now<penaltyEndTime) speed=BASE_SPEED*0.3;
+    if(activePenalty&&now>=penaltyEndTime) activePenalty=null;
+
+    // On grass? (worldX far from road center)
+    const rc = roadCenterX(car.dist);
+    const offRoad = Math.abs(car.worldX - rc) - ROAD_W/2;
+    if (offRoad > 0) speed = GRASS_SLOW;
+
+    car.speed=speed;
+    car.dist+=speed;
+
+    // Steering — in world X space
+    let left=steerLeft, right=steerRight;
+    if(activePenalty==='reverse'&&now<penaltyEndTime){const t=left;left=right;right=t;}
+    let steer=0;
+    if(left) steer-=STEER_SPEED;
+    if(right) steer+=STEER_SPEED;
+    if(activePenalty==='ice'&&now<penaltyEndTime) steer+=Math.sin(now/150)*2.5;
+    car.worldX+=steer;
+
+    // Obstacle collision
+    for(const obs of obstacles){
+        if(Math.abs(car.dist-obs.dist)>CAR_H) continue;
+        if(Math.abs(car.worldX-obs.worldX)<(CAR_W/2+obs.w/2)){
+            car.dist-=speed*0.7;
+            car.worldX+=(car.worldX<obs.worldX?-4:4);
+        }
+    }
+    // Checkpoint
+    if(nextCheckpoint<CHECKPOINT_DISTS.length&&car.dist>=CHECKPOINT_DISTS[nextCheckpoint]){
+        car.dist=CHECKPOINT_DISTS[nextCheckpoint];
+        gameState='checkpoint';
+        showQuizOverlay(nextCheckpoint);
+    }
+    // Finish
+    if(car.dist>=FINISH_DIST&&!finished){
+        finished=true;
+        finishTime=(performance.now()-raceStartTime)/1000;
+        roomRef.child('players/'+myName).update({finished:true,finishTime});
+    }
+    // Sync
+    if(now-lastSync>SYNC_INTERVAL){
+        lastSync=now;
+        roomRef.child('players/'+myName).update({
+            worldX:Math.round(car.worldX), dist:Math.round(car.dist),
+            speed:car.speed, checkpoint:nextCheckpoint
+        });
+    }
+}
+
+// ================================================================
+// QUIZ OVERLAY
+// ================================================================
+function showQuizOverlay(cpIndex) {
+    const q=questions[cpIndex];
+    document.getElementById('quiz-cp-label').textContent='Checkpoint '+(cpIndex+1)+' av '+questions.length;
+    document.getElementById('quiz-question').textContent=q.q;
+    document.getElementById('quiz-feedback').style.display='none';
+    const letters=['A','B','C','D'];
+    const grid=document.getElementById('quiz-options');
+    grid.innerHTML=q.options.map((opt,i)=>
+        '<button class="quiz-opt" data-i="'+i+'"><span class="opt-letter">'+letters[i]+'</span><span>'+esc(opt)+'</span></button>'
     ).join('');
-    document.getElementById('player-count').textContent = names.length;
-}
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-// ================================================================
-// START GAME (HOST)
-// ================================================================
-async function startGame() {
-    await startQuestion(0);
-}
-async function startQuestion(index) {
-    const playersSnap = await roomRef.child('players').once('value');
-    const players = playersSnap.val() || {};
-    const updates = {};
-    Object.keys(players).forEach(name => {
-        updates['players/' + name + '/answer'] = null;
-        updates['players/' + name + '/answeredAt'] = null;
-        updates['players/' + name + '/lastPoints'] = 0;
+    grid.querySelectorAll('.quiz-opt').forEach(btn=>{
+        btn.addEventListener('click',()=>handleQuizAnswer(cpIndex,parseInt(btn.dataset.i)));
     });
-    updates['state'] = 'question';
-    updates['currentQuestion'] = index;
-    updates['questionStartedAt'] = firebase.database.ServerValue.TIMESTAMP;
-    await roomRef.update(updates);
+    showMobileControls(false);
+    document.getElementById('quiz-overlay').classList.add('active');
 }
-
-// ================================================================
-// HANDLE QUESTION STATE
-// ================================================================
-function handleQuestion(data) {
-    hasAnswered = false;
-    isTransitioning = false;
-    currentQuestionIndex = data.currentQuestion;
-    const q = questions[data.currentQuestion];
-    document.getElementById('q-number').textContent =
-        'Sporsmal ' + (data.currentQuestion + 1) + ' av ' + questions.length;
-    document.getElementById('q-text').textContent = q.q;
-    document.getElementById('answer-status').style.display = 'none';
-    const shapes = ['\u25B2', '\u25C6', '\u25CF', '\u25A0'];
-    const grid = document.getElementById('answers-grid');
-    grid.innerHTML = q.options.map((opt, i) =>
-        '<button class="answer-btn" data-index="' + i + '">' +
-        '<span class="shape">' + shapes[i] + '</span><span>' + esc(opt) + '</span></button>'
-    ).join('');
-    grid.querySelectorAll('.answer-btn').forEach(btn => {
-        btn.addEventListener('click', () => submitAnswer(parseInt(btn.dataset.index)));
+function handleQuizAnswer(cpIndex, ans) {
+    const q=questions[cpIndex];
+    const btns=document.querySelectorAll('.quiz-opt');
+    btns.forEach(b=>{
+        b.disabled=true;
+        const bi=parseInt(b.dataset.i);
+        if(bi===ans&&bi===q.correct) b.classList.add('correct-reveal');
+        else if(bi===ans) { b.classList.add('selected'); b.classList.add('wrong-reveal'); }
+        else if(bi===q.correct) b.classList.add('correct-reveal');
+        else b.classList.add('wrong-reveal');
     });
-    showScreen('question');
-    // Start timer from server timestamp
-    roomRef.child('questionStartedAt').once('value', snap => {
-        const st = snap.val();
-        if (st) startTimer(st);
-    });
-}
-
-// ================================================================
-// TIMER
-// ================================================================
-function startTimer(startTime) {
-    clearInterval(timerInterval);
-    const bar = document.getElementById('timer-bar');
-    const txt = document.getElementById('timer-text');
-    bar.style.width = '100%';
-    txt.textContent = '15';
-    timerInterval = setInterval(() => {
-        const elapsed = (serverNow() - startTime) / 1000;
-        const remaining = Math.max(0, 15 - elapsed);
-        bar.style.width = (remaining / 15 * 100) + '%';
-        txt.textContent = Math.ceil(remaining);
-        if (remaining <= 0) {
-            clearInterval(timerInterval);
-            disableAnswers();
-            if (isHost) doTransitionToLeaderboard();
+    const fb=document.getElementById('quiz-feedback');
+    fb.style.display='block';
+    const now=performance.now();
+    if(ans===q.correct){
+        fb.textContent='Riktig! Speed boost!';
+        fb.style.background='rgba(74,222,128,.2)'; fb.style.color='#4ade80';
+        boostEndTime=now+3500;
+    } else {
+        const p=PENALTIES[Math.floor(Math.random()*PENALTIES.length)];
+        activePenalty=p.name; penaltyEndTime=now+p.duration+1500;
+        const names={ink:'Ink Splash!',ice:'Ishjul!',reverse:'Omvendte kontroller!',slow:'Slow Motion!',spin:'Spinn!'};
+        fb.textContent='Feil! '+names[p.name];
+        fb.style.background='rgba(248,113,113,.2)'; fb.style.color='#f87171';
+        if(p.name==='ink'){
+            inkBlobs=[];
+            for(let i=0;i<8;i++) inkBlobs.push({x:Math.random()*W,y:Math.random()*H,r:40+Math.random()*80});
         }
-    }, 100);
+    }
+    setTimeout(()=>{
+        document.getElementById('quiz-overlay').classList.remove('active');
+        nextCheckpoint=cpIndex+1; gameState='racing';
+        showMobileControls(true);
+        roomRef.child('players/'+myName).update({checkpoint:nextCheckpoint});
+    },1500);
 }
 
 // ================================================================
-// SUBMIT ANSWER
+// FINISH & RESULTS
 // ================================================================
-function submitAnswer(index) {
-    if (hasAnswered) return;
-    hasAnswered = true;
-    roomRef.child('players/' + myName).update({
-        answer: index,
-        answeredAt: firebase.database.ServerValue.TIMESTAMP
-    });
-    const btns = document.querySelectorAll('.answer-btn');
-    btns.forEach(btn => {
-        btn.disabled = true;
-        if (parseInt(btn.dataset.index) === index) btn.classList.add('selected');
-    });
-    const status = document.getElementById('answer-status');
-    status.style.display = 'block';
-    status.textContent = 'Svar registrert! Venter pa andre\u2026';
-    status.style.background = 'rgba(255,255,255,.1)';
+async function checkAllFinished(){
+    const snap=await roomRef.child('players').once('value');
+    const p=snap.val()||{};
+    if(Object.values(p).every(v=>v.finished)) roomRef.update({state:'finished'});
 }
-function disableAnswers() {
-    document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+function setupHostFinishListener(){
+    if(!isHost||!roomRef)return;
+    roomRef.child('players').on('child_changed',()=>{checkAllFinished();});
+}
+function showResults(data){
+    gameState='finished';
+    showMobileControls(false); hideAllScreens();
+    document.getElementById('quiz-overlay').classList.remove('active');
+    document.getElementById('host-overlay').classList.remove('active');
+    const players=data.players||{};
+    const sorted=Object.entries(players).filter(([,d])=>d.finished).sort((a,b)=>(a[1].finishTime||9999)-(b[1].finishTime||9999));
+    const dnf=Object.entries(players).filter(([,d])=>!d.finished);
+    document.getElementById('results-title').textContent=sorted.length>0?sorted[0][0]+' vinner!':'Ingen fullf\u00f8rte!';
+    const list=document.getElementById('results-list'); list.innerHTML='';
+    sorted.forEach(([name,d],i)=>{
+        list.innerHTML+='<div class="results-item"><div class="rank">'+(i+1)+'</div><div class="rname">'+esc(name)+'</div><div class="rtime">'+d.finishTime.toFixed(1)+'s</div></div>';
+    });
+    dnf.forEach(([name])=>{
+        list.innerHTML+='<div class="results-item" style="opacity:.5"><div class="rank">-</div><div class="rname">'+esc(name)+'</div><div class="rtime">DNF</div></div>';
+    });
+    document.getElementById('results-overlay').classList.add('active');
 }
 
 // ================================================================
-// TRANSITION TO LEADERBOARD (HOST)
+// RENDER (PLAYER VIEW)
 // ================================================================
-async function doTransitionToLeaderboard() {
-    if (isTransitioning || currentState !== 'question') return;
-    isTransitioning = true;
-    const [pSnap, sSnap] = await Promise.all([
-        roomRef.child('players').once('value'),
-        roomRef.child('questionStartedAt').once('value')
-    ]);
-    const players = pSnap.val() || {};
-    const startTime = sSnap.val();
-    const q = questions[currentQuestionIndex];
-    const updates = {};
-    Object.entries(players).forEach(([name, d]) => {
-        if (d.answer === q.correct && d.answeredAt) {
-            const t = Math.max(0, Math.min((d.answeredAt - startTime) / 1000, 15));
-            const pts = Math.max(300, Math.round(1000 - (t / 15) * 700));
-            updates['players/' + name + '/score'] = (d.score || 0) + pts;
-            updates['players/' + name + '/lastPoints'] = pts;
+function render() {
+    ctx.clearRect(0,0,W,H);
+    if(gameState!=='racing'&&gameState!=='checkpoint') return;
+    const camX=car.worldX, camD=car.dist;
+    drawWorld(camX, camD);
+    // Other players
+    for(const [name,d] of Object.entries(otherPlayers)){
+        const pos=toScreen(d.worldX||0,d.dist||0,camX,camD);
+        if(pos.y<-100||pos.y>H+100) continue;
+        drawCar(pos.x,pos.y,nameColor(name),.7,name,0);
+    }
+    // My car
+    const myPos=toScreen(car.worldX,car.dist,camX,camD);
+    const now=performance.now();
+    let rot=0;
+    if(activePenalty==='spin'&&now<penaltyEndTime) rot=((now%400)/400)*Math.PI*2;
+    else { if(steerLeft) rot=-0.12; if(steerRight) rot=0.12; }
+    drawCar(myPos.x,myPos.y,nameColor(myName),1,myName,rot);
+    // Boost particles
+    if(now<boostEndTime) for(let i=0;i<3;i++){
+        ctx.fillStyle=`rgba(255,${150+Math.random()*100|0},0,${.3+Math.random()*.5})`;
+        ctx.beginPath(); ctx.arc(myPos.x+(Math.random()-.5)*14,myPos.y+CAR_H/2+Math.random()*18,2+Math.random()*4,0,Math.PI*2); ctx.fill();
+    }
+    // Penalty overlays
+    if(activePenalty==='ink'&&now<penaltyEndTime){
+        const a=Math.min(1,(penaltyEndTime-now)/1000);
+        for(const b of inkBlobs){ctx.fillStyle='rgba(10,10,20,'+(0.85*a)+')';ctx.beginPath();ctx.ellipse(b.x,b.y,b.r,b.r*.7,0,0,Math.PI*2);ctx.fill();}
+    }
+    if(activePenalty==='reverse'&&now<penaltyEndTime){ctx.fillStyle='rgba(239,83,80,.12)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#ef5350';ctx.font='700 15px Montserrat';ctx.textAlign='center';ctx.fillText('\u2194 OMVENDTE KONTROLLER',W/2,34);}
+    if(activePenalty==='slow'&&now<penaltyEndTime){ctx.fillStyle='rgba(100,149,237,.1)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#6495ed';ctx.font='700 15px Montserrat';ctx.textAlign='center';ctx.fillText('\u23F3 SLOW MOTION',W/2,34);}
+    if(activePenalty==='ice'&&now<penaltyEndTime){ctx.fillStyle='rgba(173,216,230,.1)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#add8e6';ctx.font='700 15px Montserrat';ctx.textAlign='center';ctx.fillText('\u2744 ISHJUL',W/2,34);}
+    if(activePenalty==='spin'&&now<penaltyEndTime){ctx.fillStyle='#ffa726';ctx.font='700 15px Montserrat';ctx.textAlign='center';ctx.fillText('SPINN!',W/2,34);}
+    if(now<boostEndTime){ctx.fillStyle='rgba(255,215,0,.06)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#ffd700';ctx.font='700 15px Montserrat';ctx.textAlign='center';ctx.fillText('\u26A1 SPEED BOOST!',W/2,34);}
+    // On grass warning
+    const rc=roadCenterX(car.dist);
+    if(Math.abs(car.worldX-rc)>ROAD_W/2){ctx.fillStyle='rgba(200,50,50,.15)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#f87171';ctx.font='700 14px Montserrat';ctx.textAlign='center';ctx.fillText('Utenfor veien! Saktere...',W/2,H-60);}
+    // HUD
+    drawProgressHUD(camX, camD, false);
+    // Finished text
+    if(finished){
+        ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,H/2-38,W,76);
+        ctx.fillStyle='#ffd700';ctx.font='900 24px Montserrat';ctx.textAlign='center';
+        ctx.fillText('M\u00C5L! '+finishTime.toFixed(1)+'s',W/2,H/2+6);
+        ctx.fillStyle='rgba(255,255,255,.6)';ctx.font='600 12px Montserrat';
+        ctx.fillText('Venter p\u00e5 andre\u2026',W/2,H/2+28);
+    }
+}
+
+// ================================================================
+// DRAW WORLD (road, obstacles, checkpoints, finish)
+// ================================================================
+function drawWorld(camX, camD) {
+    // Grass bg
+    ctx.fillStyle='#2d6b28'; ctx.fillRect(0,0,W,H);
+    // Grass tufts
+    for(const t of grassTufts){
+        const p=toScreen(t.worldX,t.dist,camX,camD);
+        if(p.y<-20||p.y>H+20) continue;
+        ctx.fillStyle=t.dark?'#256b1f':'#3a8432';
+        ctx.beginPath(); ctx.arc(p.x,p.y,t.size,0,Math.PI*2); ctx.fill();
+    }
+    // Road (draw in strips)
+    const step=4, startD=camD-H*0.3, endD=camD+H+100;
+    for(let d=endD;d>=startD;d-=step){
+        const rc=roadCenterX(d);
+        const p=toScreen(rc,d,camX,camD);
+        // Asphalt
+        ctx.fillStyle='#555'; ctx.fillRect(p.x-ROAD_W/2, p.y, ROAD_W, step+1);
+        // Curbs
+        const cb=Math.floor(d/20)%2;
+        ctx.fillStyle=cb?'#cc0000':'#fff';
+        ctx.fillRect(p.x-ROAD_W/2-7, p.y, 7, step+1);
+        ctx.fillRect(p.x+ROAD_W/2, p.y, 7, step+1);
+        // Center + lane dashes
+        if(Math.floor(d/28)%2===0){
+            ctx.fillStyle='rgba(255,255,255,.2)';
+            ctx.fillRect(p.x-1, p.y, 2, step+1);
+            const lw=ROAD_W/3;
+            ctx.fillRect(p.x-ROAD_W/2+lw-1, p.y, 2, step+1);
+            ctx.fillRect(p.x-ROAD_W/2+lw*2-1, p.y, 2, step+1);
+        }
+    }
+    // Checkpoints
+    for(let i=0;i<CHECKPOINT_DISTS.length;i++){
+        const cd=CHECKPOINT_DISTS[i], rc=roadCenterX(cd);
+        const p=toScreen(rc,cd,camX,camD);
+        if(p.y<-60||p.y>H+60) continue;
+        const done = !isHost && i<nextCheckpoint;
+        ctx.fillStyle=done?'rgba(74,222,128,.35)':'rgba(255,107,53,.35)';
+        ctx.fillRect(p.x-ROAD_W/2,p.y-16,ROAD_W,32);
+        ctx.fillStyle=done?'#4ade80':'#ff6b35';
+        ctx.fillRect(p.x-ROAD_W/2-5,p.y-28,5,56);
+        ctx.fillRect(p.x+ROAD_W/2,p.y-28,5,56);
+        ctx.fillStyle='#fff';ctx.font='700 12px Montserrat';ctx.textAlign='center';
+        ctx.fillText(done?'\u2713 CP '+(i+1):'CHECKPOINT '+(i+1),p.x,p.y+4);
+    }
+    // Finish
+    const frc=roadCenterX(FINISH_DIST);
+    const fp=toScreen(frc,FINISH_DIST,camX,camD);
+    if(fp.y>-60&&fp.y<H+60){
+        const sq=13;
+        for(let ix=0;ix<Math.ceil(ROAD_W/sq);ix++) for(let iy=0;iy<3;iy++){
+            ctx.fillStyle=(ix+iy)%2===0?'#fff':'#111';
+            ctx.fillRect(fp.x-ROAD_W/2+ix*sq,fp.y-20+iy*sq,sq,sq);
+        }
+        ctx.fillStyle='#fff';ctx.font='900 15px Montserrat';ctx.textAlign='center';
+        ctx.fillText('M\u00C5L',fp.x,fp.y-28);
+    }
+    // Obstacles
+    for(const obs of obstacles){
+        const p=toScreen(obs.worldX,obs.dist,camX,camD);
+        if(p.y<-50||p.y>H+50) continue;
+        if(obs.type==='cone'){
+            ctx.fillStyle='#ff6600';ctx.beginPath();ctx.moveTo(p.x,p.y-10);ctx.lineTo(p.x-8,p.y+8);ctx.lineTo(p.x+8,p.y+8);ctx.closePath();ctx.fill();
+            ctx.fillStyle='#fff';ctx.fillRect(p.x-5,p.y,10,3);
+        } else if(obs.type==='oil'){
+            ctx.fillStyle='rgba(20,20,20,.75)';ctx.beginPath();ctx.ellipse(p.x,p.y,13,8,0,0,Math.PI*2);ctx.fill();
         } else {
-            updates['players/' + name + '/lastPoints'] = 0;
+            ctx.fillStyle='#cc0000';ctx.fillRect(p.x-23,p.y-6,46,12);ctx.fillStyle='#fff';ctx.fillRect(p.x-23,p.y-1,46,3);
         }
-    });
-    updates['state'] = 'leaderboard';
-    await roomRef.update(updates);
-}
-
-// ================================================================
-// HANDLE LEADERBOARD STATE
-// ================================================================
-function handleLeaderboard(data) {
-    clearInterval(timerInterval);
-    const q = questions[data.currentQuestion];
-    // Your result
-    const me = data.players[myName];
-    const yr = document.getElementById('your-result');
-    if (!me) {
-        yr.textContent = '';
-    } else if (me.lastPoints > 0) {
-        yr.textContent = 'Riktig! +' + me.lastPoints + ' poeng';
-        yr.style.color = '#66bb6a';
-    } else if (me.answer !== null && me.answer !== undefined) {
-        yr.textContent = 'Feil svar!';
-        yr.style.color = '#ef5350';
-    } else {
-        yr.textContent = 'Ikke besvart';
-        yr.style.color = 'rgba(255,255,255,.5)';
-    }
-    // Correct answer + explanation
-    document.getElementById('correct-answer').textContent = 'Riktig svar: ' + q.options[q.correct];
-    document.getElementById('explanation-text').textContent = q.explanation;
-    // Leaderboard
-    renderLeaderboard(data.players, 'leaderboard-list');
-    // Host button
-    const btn = document.getElementById('btn-next');
-    if (isHost) {
-        btn.style.display = '';
-        btn.textContent = data.currentQuestion >= questions.length - 1 ? 'VIS SLUTTRESULTAT' : 'NESTE SPORSMAL';
-    } else {
-        btn.style.display = 'none';
-    }
-    showScreen('leaderboard');
-}
-
-// ================================================================
-// RENDER LEADERBOARD
-// ================================================================
-function renderLeaderboard(players, containerId) {
-    const sorted = Object.entries(players)
-        .map(([n, d]) => ({ name: n, score: d.score || 0, lp: d.lastPoints || 0 }))
-        .sort((a, b) => b.score - a.score);
-    document.getElementById(containerId).innerHTML = sorted.map((p, i) =>
-        '<div class="leaderboard-item" style="animation-delay:' + (i * .08) + 's">' +
-        '<div class="rank">' + (i + 1) + '</div>' +
-        '<div class="name">' + esc(p.name) + (p.name === myName ? ' (deg)' : '') + '</div>' +
-        '<div class="score">' + p.score + '</div>' +
-        (p.lp > 0 ? '<div class="pts">+' + p.lp + '</div>' : '') +
-        '</div>'
-    ).join('');
-}
-
-// ================================================================
-// NEXT QUESTION / FINISH (HOST)
-// ================================================================
-async function nextQuestion() {
-    const snap = await roomRef.child('currentQuestion').once('value');
-    const cur = snap.val();
-    if (cur >= questions.length - 1) {
-        await roomRef.update({ state: 'finished' });
-    } else {
-        await startQuestion(cur + 1);
     }
 }
 
 // ================================================================
-// HANDLE FINISHED STATE
+// PROGRESS HUD
 // ================================================================
-function handleFinished(data) {
-    clearInterval(timerInterval);
-    const sorted = Object.entries(data.players)
-        .map(([n, d]) => ({ name: n, score: d.score || 0 }))
-        .sort((a, b) => b.score - a.score);
-    document.getElementById('winner-name').textContent = sorted[0] ? sorted[0].name + ' vinner!' : '';
-    renderLeaderboard(data.players, 'final-list');
-    showScreen('end');
+function drawProgressHUD(camX, camD, isHostView) {
+    const barW=130, barH=10, barX=W-barW-14, barY=14;
+    ctx.fillStyle='rgba(0,0,0,.5)';
+    ctx.beginPath(); ctx.roundRect(barX-4,barY-4,barW+8,barH+22,6); ctx.fill();
+    // My progress (player only)
+    if(!isHostView){
+        const pct=Math.min(1,car.dist/FINISH_DIST);
+        ctx.fillStyle='#ff6b35'; ctx.fillRect(barX,barY,barW*pct,barH);
+    }
+    ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;ctx.strokeRect(barX,barY,barW,barH);
+    // CP markers
+    for(let i=0;i<CHECKPOINT_DISTS.length;i++){
+        const cx=barX+barW*(CHECKPOINT_DISTS[i]/FINISH_DIST);
+        ctx.fillStyle='rgba(255,255,255,.3)';ctx.fillRect(cx-1,barY-1,2,barH+2);
+    }
+    // All player dots
+    for(const [name,d] of Object.entries(otherPlayers)){
+        const pp=Math.min(1,(d.dist||0)/FINISH_DIST);
+        ctx.fillStyle=nameColor(name);ctx.beginPath();ctx.arc(barX+barW*pp,barY+barH+7,3,0,Math.PI*2);ctx.fill();
+    }
+    if(!isHostView){
+        const pct=Math.min(1,car.dist/FINISH_DIST);
+        ctx.fillStyle=nameColor(myName);ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(barX+barW*pct,barY+barH+7,4,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#fff';ctx.font='600 10px Montserrat';ctx.textAlign='right';
+        ctx.fillText(Math.round(pct*100)+'%',barX-6,barY+9);
+    }
 }
 
 // ================================================================
-// EVENT LISTENERS
+// DRAW CAR
 // ================================================================
-document.getElementById('btn-create').addEventListener('click', () => {
-    myName = document.getElementById('input-name').value.trim();
-    if (!myName) { alert('Skriv inn navnet ditt!'); return; }
-    createRoom();
-});
-document.getElementById('btn-join').addEventListener('click', () => {
-    myName = document.getElementById('input-name').value.trim();
-    roomCode = document.getElementById('input-code').value.trim();
-    if (!myName) { alert('Skriv inn navnet ditt!'); return; }
-    if (!roomCode) { alert('Skriv inn spillkoden!'); return; }
+function drawCar(x, y, color, alpha, name, rotation) {
+    ctx.save(); ctx.globalAlpha=alpha; ctx.translate(x,y);
+    if(rotation) ctx.rotate(rotation);
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(2,4,CAR_W/2+2,CAR_H/4,0,0,Math.PI*2);ctx.fill();
+    // Body
+    ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(-CAR_W/2,-CAR_H/2,CAR_W,CAR_H,[7,7,3,3]);ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(-CAR_W/2,3,CAR_W,CAR_H/2-3);
+    // Windows
+    ctx.fillStyle='rgba(130,200,255,.5)';ctx.beginPath();ctx.roundRect(-CAR_W/2+4,-CAR_H/2+6,CAR_W-8,12,3);ctx.fill();
+    ctx.fillStyle='rgba(130,200,255,.3)';ctx.fillRect(-CAR_W/2+5,CAR_H/2-11,CAR_W-10,7);
+    // Wheels
+    ctx.fillStyle='#1a1a1a';
+    ctx.fillRect(-CAR_W/2-3,-CAR_H/2+3,5,10);ctx.fillRect(CAR_W/2-2,-CAR_H/2+3,5,10);
+    ctx.fillRect(-CAR_W/2-3,CAR_H/2-13,5,10);ctx.fillRect(CAR_W/2-2,CAR_H/2-13,5,10);
+    // Lights
+    ctx.fillStyle='rgba(255,255,200,.9)';ctx.beginPath();ctx.arc(-CAR_W/2+5,-CAR_H/2,3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(CAR_W/2-5,-CAR_H/2,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,50,50,.8)';ctx.fillRect(-CAR_W/2+3,CAR_H/2-3,5,3);ctx.fillRect(CAR_W/2-8,CAR_H/2-3,5,3);
+    ctx.restore();
+    // Name
+    ctx.save();ctx.globalAlpha=alpha;ctx.font='600 9px Montserrat';ctx.textAlign='center';
+    const tw=ctx.measureText(name).width+8;
+    ctx.fillStyle='rgba(0,0,0,.55)';ctx.beginPath();ctx.roundRect(x-tw/2,y+CAR_H/2+4,tw,14,4);ctx.fill();
+    ctx.fillStyle='#fff';ctx.fillText(name,x,y+CAR_H/2+14);ctx.restore();
+}
+
+// ================================================================
+// EVENTS
+// ================================================================
+document.getElementById('btn-create').addEventListener('click',()=>createRoom());
+document.getElementById('btn-join').addEventListener('click',()=>{
+    myName=document.getElementById('input-name').value.trim();
+    roomCode=document.getElementById('input-code').value.trim();
+    if(!myName){alert('Skriv inn navnet ditt!');return;}
+    if(!roomCode){alert('Skriv inn spillkoden!');return;}
     joinRoom();
 });
-document.getElementById('btn-start').addEventListener('click', startGame);
-document.getElementById('btn-next').addEventListener('click', nextQuestion);
-document.getElementById('btn-again').addEventListener('click', () => {
-    if (roomRef) { roomRef.off(); }
-    roomRef = null;
-    isHost = false;
-    currentState = '';
-    clearInterval(timerInterval);
+document.getElementById('btn-start').addEventListener('click',()=>{hostStartRace();setupHostFinishListener();});
+document.getElementById('btn-again').addEventListener('click',()=>{
+    if(roomRef) roomRef.off(); roomRef=null; isHost=false; gameState='menu'; finished=false; otherPlayers={};
+    document.getElementById('results-overlay').classList.remove('active');
+    document.getElementById('host-overlay').classList.remove('active');
     showScreen('start');
 });
-// Enter key shortcuts
-document.getElementById('input-name').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('input-code').focus();
-});
-document.getElementById('input-code').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('btn-join').click();
-});
-document.getElementById('input-code').addEventListener('input', e => {
-    e.target.value = e.target.value.replace(/[^0-9]/g, '');
-});
+document.getElementById('input-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('input-code').focus();});
+document.getElementById('input-code').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-join').click();});
+document.getElementById('input-code').addEventListener('input',e=>{e.target.value=e.target.value.replace(/[^0-9]/g,'');});
 </script>
 </body>
 </html>
