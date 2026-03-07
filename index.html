@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz: Jehovas Vitner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Montserrat', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #46178f 0%, #1a0533 100%);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #app {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            gap: 18px;
+            animation: fadeIn .3s ease;
+        }
+        .screen.active { display: flex; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        h1 { font-size: 2.4rem; font-weight: 900; text-align: center; line-height: 1.15; }
+        h2 { font-size: 1.4rem; font-weight: 700; text-align: center; }
+        .subtitle { font-size: .95rem; opacity: .7; text-align: center; }
+        input[type="text"] {
+            width: 100%; max-width: 340px; padding: 14px 20px; border: none;
+            border-radius: 8px; font-size: 1.1rem; font-family: inherit;
+            text-align: center; background: rgba(255,255,255,.15); color: #fff;
+            backdrop-filter: blur(8px); outline: none; transition: background .2s;
+        }
+        input::placeholder { color: rgba(255,255,255,.45); }
+        input:focus { background: rgba(255,255,255,.25); }
+        .btn {
+            padding: 14px 44px; border: none; border-radius: 8px;
+            font-size: 1.05rem; font-weight: 700; font-family: inherit;
+            cursor: pointer; transition: transform .1s, box-shadow .2s;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .btn:hover { transform: scale(1.04); }
+        .btn:active { transform: scale(.97); }
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b35, #f7c948);
+            color: #1a0533; box-shadow: 0 4px 18px rgba(255,107,53,.4);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,.18); color: #fff;
+            border: 2px solid rgba(255,255,255,.25);
+        }
+        .divider {
+            display: flex; align-items: center; gap: 14px;
+            width: 100%; max-width: 340px; color: rgba(255,255,255,.4); font-size: .85rem;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.18);
+        }
+        .room-code {
+            font-size: 3rem; font-weight: 900; letter-spacing: 10px;
+            background: rgba(255,255,255,.08); padding: 14px 32px; border-radius: 14px;
+        }
+        .player-list {
+            display: flex; flex-wrap: wrap; gap: 10px;
+            justify-content: center; max-width: 600px;
+        }
+        .player-badge {
+            padding: 8px 20px; border-radius: 22px;
+            font-weight: 600; font-size: .95rem; animation: popIn .3s ease;
+        }
+        .question-container { width: 100%; }
+        .question-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+        }
+        .question-number { font-size: .85rem; opacity: .6; }
+        .timer-text { font-size: 2.8rem; font-weight: 900; text-align: center; }
+        .timer-container {
+            width: 100%; height: 8px; background: rgba(255,255,255,.15);
+            border-radius: 4px; margin-bottom: 18px; overflow: hidden;
+        }
+        .timer-bar {
+            height: 100%; border-radius: 4px; transition: width .1s linear;
+            background: linear-gradient(to right, #66bb6a, #ffee58, #ef5350);
+        }
+        .question-text {
+            font-size: 1.35rem; font-weight: 700; text-align: center;
+            padding: 24px; background: rgba(255,255,255,.1); border-radius: 12px;
+            margin-bottom: 18px; min-height: 70px; display: flex;
+            align-items: center; justify-content: center;
+        }
+        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+        .answer-btn {
+            padding: 18px 14px; border: none; border-radius: 8px;
+            font-size: 1.05rem; font-weight: 700; font-family: inherit; color: #fff;
+            cursor: pointer; transition: transform .1s, opacity .2s;
+            display: flex; align-items: center; gap: 10px; min-height: 66px; text-align: left;
+        }
+        .answer-btn:hover:not(:disabled) { transform: scale(1.03); }
+        .answer-btn:disabled { cursor: default; }
+        .answer-btn .shape { font-size: 1.2rem; flex-shrink: 0; }
+        .answer-btn:nth-child(1) { background: #e21b3c; }
+        .answer-btn:nth-child(2) { background: #1368ce; }
+        .answer-btn:nth-child(3) { background: #d89e00; }
+        .answer-btn:nth-child(4) { background: #26890c; }
+        .answer-btn.selected { outline: 4px solid #fff; outline-offset: -4px; }
+        .answer-btn.correct-reveal { outline: 4px solid #66bb6a; outline-offset: -4px; opacity: 1 !important; }
+        .answer-btn.dimmed { opacity: .35; }
+        .answer-status {
+            text-align: center; font-size: 1.1rem; font-weight: 700;
+            padding: 14px; border-radius: 8px; margin-top: 8px;
+        }
+        .your-result {
+            font-size: 1.3rem; font-weight: 800; text-align: center;
+            padding: 12px 24px; border-radius: 10px;
+            background: rgba(255,255,255,.08);
+        }
+        .explanation-box {
+            background: rgba(255,255,255,.08); padding: 18px 24px; border-radius: 12px;
+            width: 100%; max-width: 600px; text-align: center;
+        }
+        .explanation-box .correct-answer { font-size: 1.15rem; font-weight: 700; color: #66bb6a; margin-bottom: 6px; }
+        .explanation-box .explanation-text { font-size: .92rem; opacity: .85; line-height: 1.5; }
+        .leaderboard-list {
+            width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 8px;
+        }
+        .leaderboard-item {
+            display: flex; align-items: center; padding: 12px 18px;
+            background: rgba(255,255,255,.1); border-radius: 8px;
+            animation: slideIn .3s ease backwards;
+        }
+        .leaderboard-item .rank { font-size: 1.2rem; font-weight: 900; width: 36px; text-align: center; }
+        .leaderboard-item .name { flex: 1; font-weight: 600; margin-left: 10px; }
+        .leaderboard-item .score { font-weight: 700; font-size: 1.05rem; }
+        .leaderboard-item .pts { font-size: .8rem; opacity: .6; margin-left: 8px; }
+        .leaderboard-item:first-child {
+            background: linear-gradient(135deg, rgba(255,215,0,.25), rgba(255,215,0,.08));
+            border: 1px solid rgba(255,215,0,.3);
+        }
+        .trophy { font-size: 4rem; }
+        .winner { font-size: 1.6rem; font-weight: 900; color: #ffd700; text-align: center; }
+        .error-box {
+            position: fixed; inset: 0; display: flex; flex-direction: column; gap: 16px;
+            align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #46178f, #1a0533);
+            color: #fff; font-family: 'Montserrat', sans-serif;
+            padding: 30px; text-align: center; z-index: 999;
+        }
+        .error-box code {
+            background: rgba(255,255,255,.12); padding: 14px 20px; border-radius: 8px;
+            font-size: .9rem; max-width: 500px; word-break: break-all;
+        }
+        @media (max-width: 600px) {
+            h1 { font-size: 1.7rem; }
+            .room-code { font-size: 2.2rem; letter-spacing: 6px; }
+            .question-text { font-size: 1.15rem; padding: 16px; }
+            .answer-btn { padding: 14px 10px; font-size: .92rem; min-height: 58px; }
+            .timer-text { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- START -->
+    <div id="screen-start" class="screen active">
+        <h1>Jehovas Vitner<br>Quiz</h1>
+        <p class="subtitle">KRLE &middot; 10. klasse</p>
+        <input type="text" id="input-name" placeholder="Skriv ditt navn" maxlength="20" autocomplete="off">
+        <button class="btn btn-primary" id="btn-create">Opprett spill</button>
+        <div class="divider">eller</div>
+        <input type="text" id="input-code" placeholder="Skriv spillkode" maxlength="6" inputmode="numeric" autocomplete="off">
+        <button class="btn btn-secondary" id="btn-join">Bli med i spill</button>
+    </div>
+
+    <!-- LOBBY -->
+    <div id="screen-lobby" class="screen">
+        <p class="subtitle">Del denne koden med klassen:</p>
+        <div class="room-code" id="display-code"></div>
+        <p class="subtitle"><span id="player-count">0</span> spillere</p>
+        <div class="player-list" id="player-list"></div>
+        <button class="btn btn-primary" id="btn-start" style="display:none">Start spill</button>
+        <p class="subtitle" id="waiting-host" style="display:none">Venter på at verten starter spillet&hellip;</p>
+    </div>
+
+    <!-- QUESTION -->
+    <div id="screen-question" class="screen">
+        <div class="question-container">
+            <div class="question-header">
+                <span class="question-number" id="q-number"></span>
+            </div>
+            <div class="timer-text" id="timer-text">15</div>
+            <div class="timer-container"><div class="timer-bar" id="timer-bar"></div></div>
+            <div class="question-text" id="q-text"></div>
+            <div class="answers-grid" id="answers-grid"></div>
+            <div class="answer-status" id="answer-status" style="display:none"></div>
+        </div>
+    </div>
+
+    <!-- LEADERBOARD -->
+    <div id="screen-leaderboard" class="screen">
+        <div class="your-result" id="your-result"></div>
+        <div class="explanation-box">
+            <div class="correct-answer" id="correct-answer"></div>
+            <div class="explanation-text" id="explanation-text"></div>
+        </div>
+        <h2>Poengtavle</h2>
+        <div class="leaderboard-list" id="leaderboard-list"></div>
+        <button class="btn btn-primary" id="btn-next" style="display:none">Neste sporsmal</button>
+    </div>
+
+    <!-- END -->
+    <div id="screen-end" class="screen">
+        <div class="trophy">&#127942;</div>
+        <h1>Spillet er over!</h1>
+        <div class="winner" id="winner-name"></div>
+        <h2 style="margin-top:10px">Endelig rangering</h2>
+        <div class="leaderboard-list" id="final-list"></div>
+        <button class="btn btn-primary" id="btn-again">Spill igjen</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+// ================================================================
+// FIREBASE KONFIGURASJON
+// Ga til https://console.firebase.google.com
+// 1. Opprett nytt prosjekt (sla av Google Analytics)
+// 2. Build -> Realtime Database -> Create Database -> Start in TEST mode
+// 3. Prosjektinnstillinger (tannhjul) -> legg config-verdiene under:
+// ================================================================
+const firebaseConfig = {
+    apiKey: "FYLL_INN",
+    authDomain: "FYLL_INN.firebaseapp.com",
+    databaseURL: "https://FYLL_INN-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "FYLL_INN",
+    storageBucket: "FYLL_INN.appspot.com",
+    messagingSenderId: "FYLL_INN",
+    appId: "FYLL_INN"
+};
+
+// Sjekk at Firebase er konfigurert
+if (firebaseConfig.apiKey === "FYLL_INN") {
+    document.getElementById('app').innerHTML =
+        '<div class="error-box">' +
+        '<h1>Firebase ikke konfigurert</h1>' +
+        '<p>Apne index.html og fyll inn firebaseConfig-verdiene dine.</p>' +
+        '<code>const firebaseConfig = { apiKey: "...", ... }</code>' +
+        '</div>';
+    throw new Error("Firebase ikke konfigurert");
+}
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ================================================================
+// SPORSMAAL (18 stk)
+// ================================================================
+const questions = [
+    {
+        q: "Hva kaller Jehovas vitner sitt motelokale?",
+        options: ["Kirke", "Moske", "Rikets sal", "Tempel"],
+        correct: 2,
+        explanation: "Jehovas vitner samles i \u00abRikets sal\u00bb, ikke i kirker eller templer."
+    },
+    {
+        q: "Feirer Jehovas vitner jul?",
+        options: ["Ja, som alle andre", "Nei", "Bare julaften", "Kun med familien"],
+        correct: 1,
+        explanation: "De mener jul har hedensk opprinnelse og feirer den ikke."
+    },
+    {
+        q: "Hva er Jehovas vitners holdning til blodoverforing?",
+        options: ["De aksepterer det", "Kun i nodstilfeller", "De nekter", "Bare for voksne"],
+        correct: 2,
+        explanation: "Basert pa deres tolkning av Bibelen (Apostlenes gjerninger 15:28\u201329) nekter de blodoverforing."
+    },
+    {
+        q: "Hva heter det mest kjente tidsskriftet til Jehovas vitner?",
+        options: ["Troens vei", "Vakttarnet", "Guds rike", "Lyset"],
+        correct: 1,
+        explanation: "\u00abVakttarnet\u00bb er et av verdens mest distribuerte tidsskrifter."
+    },
+    {
+        q: "Hva mener Jehovas vitner er Guds rette navn?",
+        options: ["Jahve", "Elohim", "Jehova", "Adonai"],
+        correct: 2,
+        explanation: "Navnet \u00abJehova\u00bb er sentralt i deres tro og kommer fra det hebraiske tetragrammet JHVH."
+    },
+    {
+        q: "Hva kalles aktiviteten der Jehovas vitner gar fra dor til dor?",
+        options: ["Misjon", "Pilegrimsreise", "Evangelisering", "Forkynnelse"],
+        correct: 3,
+        explanation: "Dor-til-dor-forkynnelse er en viktig del av deres religiose praksis."
+    },
+    {
+        q: "Feirer Jehovas vitner bursdag?",
+        options: ["Ja", "Nei", "Bare for barn", "Bare runde ar"],
+        correct: 1,
+        explanation: "De mener bursdagsfeiringer har hedensk opprinnelse og feirer dem ikke."
+    },
+    {
+        q: "Hva kaller Jehovas vitner sin overste ledelse?",
+        options: ["Paven", "Eldsteradet", "Det styrende rad", "Bisperadet"],
+        correct: 2,
+        explanation: "Det styrende rad leder organisasjonen fra hovedkvarteret i Warwick, New York."
+    },
+    {
+        q: "Hvilken hoytid feirer Jehovas vitner hvert ar?",
+        options: ["Jul", "Paske", "Minnehoytiden", "Pinse"],
+        correct: 2,
+        explanation: "Minnehoytiden (Herrens kveldsmaltid) er den eneste hoytiden de feirer, til minne om Jesu dod."
+    },
+    {
+        q: "Stemmer Jehovas vitner ved politiske valg?",
+        options: ["Ja, alltid", "Kun ved stortingsvalg", "Nei", "Bare lokalt"],
+        correct: 2,
+        explanation: "De er politisk noytrale og deltar ikke i valg."
+    },
+    {
+        q: "Tror Jehovas vitner pa treenigheten?",
+        options: ["Ja", "Nei", "Delvis", "Kun Faderen og Sonnen"],
+        correct: 1,
+        explanation: "De avviser treenigheten. De tror Jesus er Guds sonn, men ikke Gud selv."
+    },
+    {
+        q: "Hva kalles det nar noen blir utstott fra Jehovas vitner?",
+        options: ["Bannlysning", "Ekskommunikasjon", "Eksklusjon", "Utestengelse"],
+        correct: 2,
+        explanation: "Ekskluderte medlemmer kan miste kontakt med familie og venner i menigheten."
+    },
+    {
+        q: "Hvilken bibeloversettelse bruker Jehovas vitner primert?",
+        options: ["Bibel 2011", "King James-bibelen", "Ny Verden-oversettelsen", "Den hellige skrift"],
+        correct: 2,
+        explanation: "Ny Verden-oversettelsen er utgitt av Jehovas vitner og brukes i deres studier og forkynnelse."
+    },
+    {
+        q: "Hvem grunnla bevegelsen som ble til Jehovas vitner?",
+        options: ["Joseph Smith", "Martin Luther", "Charles T. Russell", "John Wesley"],
+        correct: 2,
+        explanation: "Charles Taze Russell startet bibelstudentbevegelsen pa 1870-tallet i USA."
+    },
+    {
+        q: "Hvor mange tror Jehovas vitner skal styre med Kristus i himmelen?",
+        options: ["12 000", "144 000", "1 million", "Alle troende"],
+        correct: 1,
+        explanation: "Basert pa Apenbaringen 7:4 tror de at 144 000 utvalgte skal herske med Kristus. Resten vil leve pa en paradisisk jord."
+    },
+    {
+        q: "Deltar Jehovas vitner i militertjeneste?",
+        options: ["Ja", "Kun i forsvar", "Nei", "Bare siviltjeneste"],
+        correct: 2,
+        explanation: "De nekter militertjeneste av samvittighetsgrunner og noytralitet."
+    },
+    {
+        q: "Hva tror Jehovas vitner vil skje i den nere fremtid?",
+        options: ["Ingenting spesielt", "Harmageddon", "Ragnarok", "Jordens undergang"],
+        correct: 1,
+        explanation: "De tror Guds krig, Harmageddon, vil odelegge ondskapen og innlede et paradis pa jorden."
+    },
+    {
+        q: "Hva er adressen til Jehovas vitners offisielle nettside?",
+        options: ["watchtower.org", "jw.org", "jehovah.com", "witness.net"],
+        correct: 1,
+        explanation: "jw.org er deres offisielle nettside med informasjon pa over 1000 sprak."
+    }
+];
+
+// ================================================================
+// STATE
+// ================================================================
+let myName = '';
+let roomCode = '';
+let roomRef = null;
+let isHost = false;
+let currentState = '';
+let currentQuestionIndex = 0;
+let timerInterval = null;
+let hasAnswered = false;
+let isTransitioning = false;
+let serverTimeOffset = 0;
+
+db.ref('.info/serverTimeOffset').on('value', s => { serverTimeOffset = s.val() || 0; });
+function serverNow() { return Date.now() + serverTimeOffset; }
+
+// ================================================================
+// HELPERS
+// ================================================================
+const badgeColors = ['#e21b3c','#1368ce','#d89e00','#26890c','#9b59b6','#e67e22','#1abc9c','#e74c3c','#3498db','#2ecc71'];
+function nameColor(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return badgeColors[Math.abs(h) % badgeColors.length];
+}
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+}
+function generateCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// ================================================================
+// CREATE ROOM
+// ================================================================
+async function createRoom() {
+    roomCode = generateCode();
+    roomRef = db.ref('rooms/' + roomCode);
+    isHost = true;
+    await roomRef.set({
+        host: myName,
+        state: 'lobby',
+        currentQuestion: 0,
+        questionStartedAt: 0,
+        players: { [myName]: { score: 0, answer: null, answeredAt: null, lastPoints: 0 } }
+    });
+    document.getElementById('display-code').textContent = roomCode;
+    document.getElementById('btn-start').style.display = '';
+    document.getElementById('waiting-host').style.display = 'none';
+    showScreen('lobby');
+    listenToRoom();
+}
+
+// ================================================================
+// JOIN ROOM
+// ================================================================
+async function joinRoom() {
+    roomRef = db.ref('rooms/' + roomCode);
+    const snap = await roomRef.once('value');
+    if (!snap.exists()) { alert('Finner ikke spillet. Sjekk koden.'); return; }
+    const data = snap.val();
+    if (data.state !== 'lobby') { alert('Spillet har allerede startet.'); return; }
+    if (data.players && data.players[myName]) { alert('Navnet er allerede tatt. Velg et annet.'); return; }
+    await roomRef.child('players/' + myName).set({ score: 0, answer: null, answeredAt: null, lastPoints: 0 });
+    document.getElementById('display-code').textContent = roomCode;
+    document.getElementById('btn-start').style.display = 'none';
+    document.getElementById('waiting-host').style.display = '';
+    showScreen('lobby');
+    listenToRoom();
+}
+
+// ================================================================
+// ROOM LISTENER
+// ================================================================
+function listenToRoom() {
+    roomRef.on('value', snap => {
+        const data = snap.val();
+        if (!data) return;
+        // Always update player list
+        renderPlayerList(data.players || {});
+        // State transitions
+        if (data.state !== currentState) {
+            currentState = data.state;
+            isTransitioning = false;
+            switch (data.state) {
+                case 'lobby': showScreen('lobby'); break;
+                case 'question': handleQuestion(data); break;
+                case 'leaderboard': handleLeaderboard(data); break;
+                case 'finished': handleFinished(data); break;
+            }
+        }
+        // Host: check if all answered
+        if (isHost && currentState === 'question' && !isTransitioning && data.players) {
+            const all = Object.values(data.players).every(p => p.answer !== null && p.answer !== undefined);
+            if (all) {
+                clearInterval(timerInterval);
+                doTransitionToLeaderboard();
+            }
+        }
+    });
+}
+
+// ================================================================
+// RENDER PLAYER LIST
+// ================================================================
+function renderPlayerList(players) {
+    const names = Object.keys(players);
+    document.getElementById('player-list').innerHTML = names.map(n =>
+        '<div class="player-badge" style="background:' + nameColor(n) + '">' + esc(n) + '</div>'
+    ).join('');
+    document.getElementById('player-count').textContent = names.length;
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ================================================================
+// START GAME (HOST)
+// ================================================================
+async function startGame() {
+    await startQuestion(0);
+}
+async function startQuestion(index) {
+    const playersSnap = await roomRef.child('players').once('value');
+    const players = playersSnap.val() || {};
+    const updates = {};
+    Object.keys(players).forEach(name => {
+        updates['players/' + name + '/answer'] = null;
+        updates['players/' + name + '/answeredAt'] = null;
+        updates['players/' + name + '/lastPoints'] = 0;
+    });
+    updates['state'] = 'question';
+    updates['currentQuestion'] = index;
+    updates['questionStartedAt'] = firebase.database.ServerValue.TIMESTAMP;
+    await roomRef.update(updates);
+}
+
+// ================================================================
+// HANDLE QUESTION STATE
+// ================================================================
+function handleQuestion(data) {
+    hasAnswered = false;
+    isTransitioning = false;
+    currentQuestionIndex = data.currentQuestion;
+    const q = questions[data.currentQuestion];
+    document.getElementById('q-number').textContent =
+        'Sporsmal ' + (data.currentQuestion + 1) + ' av ' + questions.length;
+    document.getElementById('q-text').textContent = q.q;
+    document.getElementById('answer-status').style.display = 'none';
+    const shapes = ['\u25B2', '\u25C6', '\u25CF', '\u25A0'];
+    const grid = document.getElementById('answers-grid');
+    grid.innerHTML = q.options.map((opt, i) =>
+        '<button class="answer-btn" data-index="' + i + '">' +
+        '<span class="shape">' + shapes[i] + '</span><span>' + esc(opt) + '</span></button>'
+    ).join('');
+    grid.querySelectorAll('.answer-btn').forEach(btn => {
+        btn.addEventListener('click', () => submitAnswer(parseInt(btn.dataset.index)));
+    });
+    showScreen('question');
+    // Start timer from server timestamp
+    roomRef.child('questionStartedAt').once('value', snap => {
+        const st = snap.val();
+        if (st) startTimer(st);
+    });
+}
+
+// ================================================================
+// TIMER
+// ================================================================
+function startTimer(startTime) {
+    clearInterval(timerInterval);
+    const bar = document.getElementById('timer-bar');
+    const txt = document.getElementById('timer-text');
+    bar.style.width = '100%';
+    txt.textContent = '15';
+    timerInterval = setInterval(() => {
+        const elapsed = (serverNow() - startTime) / 1000;
+        const remaining = Math.max(0, 15 - elapsed);
+        bar.style.width = (remaining / 15 * 100) + '%';
+        txt.textContent = Math.ceil(remaining);
+        if (remaining <= 0) {
+            clearInterval(timerInterval);
+            disableAnswers();
+            if (isHost) doTransitionToLeaderboard();
+        }
+    }, 100);
+}
+
+// ================================================================
+// SUBMIT ANSWER
+// ================================================================
+function submitAnswer(index) {
+    if (hasAnswered) return;
+    hasAnswered = true;
+    roomRef.child('players/' + myName).update({
+        answer: index,
+        answeredAt: firebase.database.ServerValue.TIMESTAMP
+    });
+    const btns = document.querySelectorAll('.answer-btn');
+    btns.forEach(btn => {
+        btn.disabled = true;
+        if (parseInt(btn.dataset.index) === index) btn.classList.add('selected');
+    });
+    const status = document.getElementById('answer-status');
+    status.style.display = 'block';
+    status.textContent = 'Svar registrert! Venter pa andre\u2026';
+    status.style.background = 'rgba(255,255,255,.1)';
+}
+function disableAnswers() {
+    document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+}
+
+// ================================================================
+// TRANSITION TO LEADERBOARD (HOST)
+// ================================================================
+async function doTransitionToLeaderboard() {
+    if (isTransitioning || currentState !== 'question') return;
+    isTransitioning = true;
+    const [pSnap, sSnap] = await Promise.all([
+        roomRef.child('players').once('value'),
+        roomRef.child('questionStartedAt').once('value')
+    ]);
+    const players = pSnap.val() || {};
+    const startTime = sSnap.val();
+    const q = questions[currentQuestionIndex];
+    const updates = {};
+    Object.entries(players).forEach(([name, d]) => {
+        if (d.answer === q.correct && d.answeredAt) {
+            const t = Math.max(0, Math.min((d.answeredAt - startTime) / 1000, 15));
+            const pts = Math.max(300, Math.round(1000 - (t / 15) * 700));
+            updates['players/' + name + '/score'] = (d.score || 0) + pts;
+            updates['players/' + name + '/lastPoints'] = pts;
+        } else {
+            updates['players/' + name + '/lastPoints'] = 0;
+        }
+    });
+    updates['state'] = 'leaderboard';
+    await roomRef.update(updates);
+}
+
+// ================================================================
+// HANDLE LEADERBOARD STATE
+// ================================================================
+function handleLeaderboard(data) {
+    clearInterval(timerInterval);
+    const q = questions[data.currentQuestion];
+    // Your result
+    const me = data.players[myName];
+    const yr = document.getElementById('your-result');
+    if (!me) {
+        yr.textContent = '';
+    } else if (me.lastPoints > 0) {
+        yr.textContent = 'Riktig! +' + me.lastPoints + ' poeng';
+        yr.style.color = '#66bb6a';
+    } else if (me.answer !== null && me.answer !== undefined) {
+        yr.textContent = 'Feil svar!';
+        yr.style.color = '#ef5350';
+    } else {
+        yr.textContent = 'Ikke besvart';
+        yr.style.color = 'rgba(255,255,255,.5)';
+    }
+    // Correct answer + explanation
+    document.getElementById('correct-answer').textContent = 'Riktig svar: ' + q.options[q.correct];
+    document.getElementById('explanation-text').textContent = q.explanation;
+    // Leaderboard
+    renderLeaderboard(data.players, 'leaderboard-list');
+    // Host button
+    const btn = document.getElementById('btn-next');
+    if (isHost) {
+        btn.style.display = '';
+        btn.textContent = data.currentQuestion >= questions.length - 1 ? 'VIS SLUTTRESULTAT' : 'NESTE SPORSMAL';
+    } else {
+        btn.style.display = 'none';
+    }
+    showScreen('leaderboard');
+}
+
+// ================================================================
+// RENDER LEADERBOARD
+// ================================================================
+function renderLeaderboard(players, containerId) {
+    const sorted = Object.entries(players)
+        .map(([n, d]) => ({ name: n, score: d.score || 0, lp: d.lastPoints || 0 }))
+        .sort((a, b) => b.score - a.score);
+    document.getElementById(containerId).innerHTML = sorted.map((p, i) =>
+        '<div class="leaderboard-item" style="animation-delay:' + (i * .08) + 's">' +
+        '<div class="rank">' + (i + 1) + '</div>' +
+        '<div class="name">' + esc(p.name) + (p.name === myName ? ' (deg)' : '') + '</div>' +
+        '<div class="score">' + p.score + '</div>' +
+        (p.lp > 0 ? '<div class="pts">+' + p.lp + '</div>' : '') +
+        '</div>'
+    ).join('');
+}
+
+// ================================================================
+// NEXT QUESTION / FINISH (HOST)
+// ================================================================
+async function nextQuestion() {
+    const snap = await roomRef.child('currentQuestion').once('value');
+    const cur = snap.val();
+    if (cur >= questions.length - 1) {
+        await roomRef.update({ state: 'finished' });
+    } else {
+        await startQuestion(cur + 1);
+    }
+}
+
+// ================================================================
+// HANDLE FINISHED STATE
+// ================================================================
+function handleFinished(data) {
+    clearInterval(timerInterval);
+    const sorted = Object.entries(data.players)
+        .map(([n, d]) => ({ name: n, score: d.score || 0 }))
+        .sort((a, b) => b.score - a.score);
+    document.getElementById('winner-name').textContent = sorted[0] ? sorted[0].name + ' vinner!' : '';
+    renderLeaderboard(data.players, 'final-list');
+    showScreen('end');
+}
+
+// ================================================================
+// EVENT LISTENERS
+// ================================================================
+document.getElementById('btn-create').addEventListener('click', () => {
+    myName = document.getElementById('input-name').value.trim();
+    if (!myName) { alert('Skriv inn navnet ditt!'); return; }
+    createRoom();
+});
+document.getElementById('btn-join').addEventListener('click', () => {
+    myName = document.getElementById('input-name').value.trim();
+    roomCode = document.getElementById('input-code').value.trim();
+    if (!myName) { alert('Skriv inn navnet ditt!'); return; }
+    if (!roomCode) { alert('Skriv inn spillkoden!'); return; }
+    joinRoom();
+});
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-next').addEventListener('click', nextQuestion);
+document.getElementById('btn-again').addEventListener('click', () => {
+    if (roomRef) { roomRef.off(); }
+    roomRef = null;
+    isHost = false;
+    currentState = '';
+    clearInterval(timerInterval);
+    showScreen('start');
+});
+// Enter key shortcuts
+document.getElementById('input-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('input-code').focus();
+});
+document.getElementById('input-code').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-join').click();
+});
+document.getElementById('input-code').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+});
+</script>
+</body>
+</html>
