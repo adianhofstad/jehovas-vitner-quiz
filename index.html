@@ -378,6 +378,7 @@ function generateObstacles(seed) {
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 function generateCode(){return Math.floor(100000+Math.random()*900000).toString();}
 function nameColor(name){let h=0;for(let i=0;i<name.length;i++)h=name.charCodeAt(i)+((h<<5)-h);return CAR_COLORS[Math.abs(h)%CAR_COLORS.length];}
+function safeName(name){return name.replace(/[.#$/\[\]]/g,'_');}
 
 // World to screen: camera follows a target worldX and dist
 function toScreen(worldX, dist, camWorldX, camDist) {
@@ -391,33 +392,39 @@ function hideAllScreens(){document.querySelectorAll('.screen').forEach(s=>s.clas
 // CREATE / JOIN ROOM
 // ================================================================
 async function createRoom() {
-    myName = '__host__';
-    roomCode = generateCode();
-    roomRef = db.ref('rooms/'+roomCode);
-    isHost = true;
-    const seed = Math.floor(Math.random()*999999)+1;
-    await roomRef.set({ host:'__host__', state:'lobby', seed });
-    document.getElementById('display-code').textContent = roomCode;
-    document.getElementById('btn-start').style.display = '';
-    document.getElementById('waiting-host').style.display = 'none';
-    gameState = 'lobby';
-    showScreen('lobby');
-    listenToRoom();
+    try {
+        myName = '__host__';
+        roomCode = generateCode();
+        roomRef = db.ref('rooms/'+roomCode);
+        isHost = true;
+        const seed = Math.floor(Math.random()*999999)+1;
+        await roomRef.set({ host:'__host__', state:'lobby', seed, created:Date.now() });
+        document.getElementById('display-code').textContent = roomCode;
+        document.getElementById('btn-start').style.display = '';
+        document.getElementById('waiting-host').style.display = 'none';
+        gameState = 'lobby';
+        showScreen('lobby');
+        listenToRoom();
+    } catch(e) { alert('Kunne ikke opprette spill: '+e.message); }
 }
 async function joinRoom() {
-    roomRef = db.ref('rooms/'+roomCode);
-    const snap = await roomRef.once('value');
-    if(!snap.exists()){alert('Finner ikke spillet.');return;}
-    const data=snap.val();
-    if(data.state!=='lobby'){alert('Spillet har allerede startet.');return;}
-    if(data.players&&data.players[myName]){alert('Navnet er tatt.');return;}
-    await roomRef.child('players/'+myName).set({ worldX:0, dist:0, speed:BASE_SPEED, finished:false, finishTime:null, checkpoint:0 });
-    document.getElementById('display-code').textContent = roomCode;
-    document.getElementById('btn-start').style.display = 'none';
-    document.getElementById('waiting-host').style.display = '';
-    gameState = 'lobby';
-    showScreen('lobby');
-    listenToRoom();
+    try {
+        roomRef = db.ref('rooms/'+roomCode);
+        const snap = await roomRef.once('value');
+        if(!snap.exists()){alert('Finner ikke spillet. Sjekk koden.');return;}
+        const data=snap.val();
+        if(data.state!=='lobby'){alert('Spillet har allerede startet.');return;}
+        myName = safeName(myName);
+        if(data.players&&data.players[myName]){alert('Navnet er tatt.');return;}
+        await roomRef.child('players/'+myName).set({ worldX:0, dist:0, speed:BASE_SPEED, finished:false, finishTime:null, checkpoint:0 });
+        roomRef.child('players/'+myName).onDisconnect().remove();
+        document.getElementById('display-code').textContent = roomCode;
+        document.getElementById('btn-start').style.display = 'none';
+        document.getElementById('waiting-host').style.display = '';
+        gameState = 'lobby';
+        showScreen('lobby');
+        listenToRoom();
+    } catch(e) { alert('Kunne ikke bli med: '+e.message); }
 }
 
 // ================================================================
@@ -739,7 +746,7 @@ async function checkAllFinished(){
 }
 function setupHostFinishListener(){
     if(!isHost||!roomRef)return;
-    roomRef.child('players').on('child_changed',()=>{checkAllFinished();});
+    roomRef.child('players').on('value',()=>{checkAllFinished();});
 }
 function showResults(data){
     gameState='finished';
@@ -958,7 +965,7 @@ document.getElementById('btn-join').addEventListener('click',()=>{
     if(!roomCode){alert('Skriv inn spillkoden!');return;}
     joinRoom();
 });
-function hostStartRace() { roomRef.update({ state: 'racing' }); }
+function hostStartRace() { roomRef.update({ state: 'racing' }).catch(e=>alert('Kunne ikke starte: '+e.message)); }
 document.getElementById('btn-start').addEventListener('click',()=>{hostStartRace();setupHostFinishListener();});
 document.getElementById('btn-again').addEventListener('click',()=>{
     if(roomRef) roomRef.off(); roomRef=null; isHost=false; gameState='menu'; finished=false; otherPlayers={};
