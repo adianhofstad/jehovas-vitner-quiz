@@ -958,6 +958,7 @@ document.getElementById('btn-join').addEventListener('click',()=>{
     if(!roomCode){alert('Skriv inn spillkoden!');return;}
     joinRoom();
 });
+function hostStartRace() { roomRef.update({ state: 'racing' }); }
 document.getElementById('btn-start').addEventListener('click',()=>{hostStartRace();setupHostFinishListener();});
 document.getElementById('btn-again').addEventListener('click',()=>{
     if(roomRef) roomRef.off(); roomRef=null; isHost=false; gameState='menu'; finished=false; otherPlayers={};
