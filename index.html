@@ -23,6 +23,7 @@
             gap: 16px; padding: 20px; z-index: 10;
             background: linear-gradient(135deg, #46178f 0%, #1a0533 100%);
             animation: fadeIn .3s ease;
+            overflow-y: auto;
         }
         .screen.active { display: flex; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
@@ -200,6 +201,7 @@
     <input type="text" id="input-name" placeholder="Skriv ditt navn" maxlength="20" autocomplete="off">
     <input type="text" id="input-code" placeholder="Skriv spillkode" maxlength="6" inputmode="numeric" autocomplete="off">
     <button class="btn btn-secondary" id="btn-join">Bli med i spill</button>
+    <p class="subtitle" id="join-status" style="display:none"></p>
 </div>
 
 <!-- LOBBY -->
@@ -267,35 +269,51 @@ const questions = [
     { q:"Hva er Jehovas vitners holdning til blodoverf\u00f8ring?", options:["De aksepterer det","Kun i n\u00f8dstilfeller","De nekter","Bare for voksne"], correct:2 },
     { q:"Hva mener Jehovas vitner er Guds rette navn?", options:["Jahve","Elohim","Jehova","Adonai"], correct:2 },
     { q:"Tror Jehovas vitner p\u00e5 treenigheten?", options:["Ja","Nei","Delvis","Kun Faderen og S\u00f8nnen"], correct:1 },
-    { q:"Hvor mange tror de skal styre med Kristus i himmelen?", options:["12 000","144 000","1 million","Alle troende"], correct:1 }
+    { q:"Hvor mange tror de skal styre med Kristus i himmelen?", options:["12 000","144 000","1 million","Alle troende"], correct:1 },
+    { q:"Hva heter Jehovas vitners viktigste tidsskrift?", options:["Bibelen i dag","Vaktt\u00e5rnet","Troens vei","Guds ord"], correct:1 },
+    { q:"Feirer Jehovas vitner jul?", options:["Ja","Bare julaften","Nei","Kun gudstjeneste"], correct:2 },
+    { q:"I hvilket land ble Jehovas vitner grunnlagt?", options:["England","Tyskland","USA","Israel"], correct:2 },
+    { q:"Hva kaller de det n\u00e5r noen blir utelukket fra trossamfunnet?", options:["Bannlysning","Eksklusjon","Utst\u00f8telse","B\u00e5de B og C"], correct:3 },
+    { q:"Feirer Jehovas vitner bursdag?", options:["Ja, alltid","Kun for barn","Nei","Bare runde \u00e5r"], correct:2 },
+    { q:"Hvem grunnla Jehovas vitner?", options:["Joseph Smith","Martin Luther","Charles T. Russell","William Miller"], correct:2 },
+    { q:"Hva kaller Jehovas vitner sin d\u00f8r-til-d\u00f8r-virksomhet?", options:["Misjon","Forkynnelse","Evangelisering","Preken"], correct:1 },
+    { q:"Hvilken bibel\u00f8versettelse bruker Jehovas vitner?", options:["King James","Bibel 2011","Ny verden-oversettelsen","Den norske bibelen"], correct:2 },
+    { q:"Stemmer Jehovas vitner ved politiske valg?", options:["Ja","Kun lokalvalg","Nei","Bare presidentvalg"], correct:2 },
+    { q:"Hva tror Jehovas vitner skjer n\u00e5r man d\u00f8r?", options:["Man kommer til himmelen","Sjelen sover","Man gjenf\u00f8des","Ingenting, man slutter \u00e5 eksistere"], correct:3 }
 ];
 
 // ================================================================
 // TRACK — road center X in world-space at each distance
 // Car has a worldX that must be steered to follow the road.
 // ================================================================
-const TRACK_LENGTH = 8000;
+const TRACK_LENGTH = 48000;
 const ROAD_W = 210;
 const CAR_W = 26, CAR_H = 46;
 const BASE_SPEED = 3.0;
 const BOOST_SPEED = 6.0;
 const GRASS_SLOW = 1.0;
 const STEER_SPEED = 3.8;
-const CHECKPOINT_DISTS = [1200, 2800, 4400, 6000, 7600];
+const CHECKPOINT_DISTS = [3000,6000,9000,12000,15000,18000,21000,24000,27000,30000,33000,36000,39000,42000,45000];
 const FINISH_DIST = TRACK_LENGTH;
 
-// Curve control points [dist, worldCenterX]
+// Curve control points [dist, worldCenterX] — gentle curves, mostly straight
 const CURVES = [
-    [0,0],[300,0],
-    [600,100],[1000,220],[1200,180],   // right then checkpoint
-    [1500,60],[1900,-120],[2300,-240],[2600,-160],[2800,-60], // left, checkpoint
-    [3100,80],[3400,230],[3700,160],[3900,20],
-    [4200,-160],[4400,-100],           // checkpoint
-    [4700,40],[5000,200],[5300,320],[5600,240],[5800,80],
-    [6000,0],                          // checkpoint
-    [6300,-200],[6600,-340],[6900,-200],[7100,40],
-    [7400,220],[7600,140],             // checkpoint
-    [7800,40],[8000,0]                 // finish
+    [0,0],[1500,0],[2500,40],[3000,30],
+    [4000,0],[5000,-40],[6000,-20],
+    [7000,0],[8000,50],[9000,30],
+    [10000,0],[11000,-30],[12000,0],
+    [13500,40],[15000,20],
+    [16000,0],[17000,-50],[18000,-30],
+    [19000,0],[20000,40],[21000,20],
+    [22000,0],[23000,-30],[24000,0],
+    [25500,50],[27000,30],
+    [28000,0],[29000,-40],[30000,-20],
+    [31000,0],[32000,30],[33000,20],
+    [34000,0],[35000,-30],[36000,0],
+    [37500,40],[39000,20],
+    [40000,0],[41000,-40],[42000,-20],
+    [43000,0],[44000,30],[45000,20],
+    [46000,0],[47000,-20],[48000,0]
 ];
 
 function roadCenterX(dist) {
@@ -379,6 +397,12 @@ function esc(s){const d=document.createElement('div');d.textContent=s;return d.i
 function generateCode(){return Math.floor(100000+Math.random()*900000).toString();}
 function nameColor(name){let h=0;for(let i=0;i<name.length;i++)h=name.charCodeAt(i)+((h<<5)-h);return CAR_COLORS[Math.abs(h)%CAR_COLORS.length];}
 function safeName(name){return name.replace(/[.#$/\[\]]/g,'_');}
+function showStatus(msg,isError){
+    const el=document.getElementById('join-status');
+    el.textContent=msg; el.style.display='block';
+    el.style.color=isError?'#f87171':'#4ade80';
+    el.style.opacity='1';
+}
 
 // World to screen: camera follows a target worldX and dist
 function toScreen(worldX, dist, camWorldX, camDist) {
@@ -405,17 +429,21 @@ async function createRoom() {
         gameState = 'lobby';
         showScreen('lobby');
         listenToRoom();
-    } catch(e) { alert('Kunne ikke opprette spill: '+e.message); }
+    } catch(e) { showStatus('Kunne ikke opprette spill: '+e.message,true); }
 }
 async function joinRoom() {
+    const btn=document.getElementById('btn-join');
+    btn.disabled=true; btn.textContent='Kobler til...';
     try {
         roomRef = db.ref('rooms/'+roomCode);
+        showStatus('Sjekker spillkode...',false);
         const snap = await roomRef.once('value');
-        if(!snap.exists()){alert('Finner ikke spillet. Sjekk koden.');return;}
+        if(!snap.exists()){showStatus('Finner ikke spillet. Sjekk koden.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
         const data=snap.val();
-        if(data.state!=='lobby'){alert('Spillet har allerede startet.');return;}
+        if(data.state!=='lobby'){showStatus('Spillet har allerede startet.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
         myName = safeName(myName);
-        if(data.players&&data.players[myName]){alert('Navnet er tatt.');return;}
+        if(data.players&&data.players[myName]){showStatus('Navnet er tatt, prøv et annet.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
+        showStatus('Blir med...',false);
         await roomRef.child('players/'+myName).set({ worldX:0, dist:0, speed:BASE_SPEED, finished:false, finishTime:null, checkpoint:0 });
         roomRef.child('players/'+myName).onDisconnect().remove();
         document.getElementById('display-code').textContent = roomCode;
@@ -424,7 +452,8 @@ async function joinRoom() {
         gameState = 'lobby';
         showScreen('lobby');
         listenToRoom();
-    } catch(e) { alert('Kunne ikke bli med: '+e.message); }
+    } catch(e) { showStatus('Feil: '+e.message,true); }
+    btn.disabled=false; btn.textContent='Bli med i spill';
 }
 
 // ================================================================
@@ -961,8 +990,8 @@ document.getElementById('btn-create').addEventListener('click',()=>createRoom())
 document.getElementById('btn-join').addEventListener('click',()=>{
     myName=document.getElementById('input-name').value.trim();
     roomCode=document.getElementById('input-code').value.trim();
-    if(!myName){alert('Skriv inn navnet ditt!');return;}
-    if(!roomCode){alert('Skriv inn spillkoden!');return;}
+    if(!myName){showStatus('Skriv inn navnet ditt!',true);return;}
+    if(!roomCode){showStatus('Skriv inn spillkoden!',true);return;}
     joinRoom();
 });
 function hostStartRace() { roomRef.update({ state: 'racing' }).catch(e=>alert('Kunne ikke starte: '+e.message)); }
