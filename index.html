@@ -196,6 +196,7 @@
 <div id="screen-start" class="screen active">
     <h1>Jehovas Vitner<br>Racing Quiz</h1>
     <p class="subtitle">KRLE &middot; 10. klasse</p>
+    <p class="subtitle" id="conn-status" style="color:#f87171"></p>
     <button class="btn btn-primary" id="btn-create">Opprett spill</button>
     <div class="divider">eller bli med</div>
     <input type="text" id="input-name" placeholder="Skriv ditt navn" maxlength="20" autocomplete="off">
@@ -409,6 +410,12 @@ function showStatus(msg,isError){
     el.style.color=isError?'#f87171':'#4ade80';
     el.style.opacity='1';
 }
+function fbTimeout(promise, ms){
+    return Promise.race([
+        promise,
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('Tidsavbrudd - sjekk internett')),ms))
+    ]);
+}
 
 // World to screen: camera follows a target worldX and dist
 function toScreen(worldX, dist, camWorldX, camDist) {
@@ -422,20 +429,26 @@ function hideAllScreens(){document.querySelectorAll('.screen').forEach(s=>s.clas
 // CREATE / JOIN ROOM
 // ================================================================
 async function createRoom() {
+    const btn=document.getElementById('btn-create');
+    btn.disabled=true; btn.textContent='Oppretter...';
     try {
         myName = '__host__';
         roomCode = generateCode();
         roomRef = db.ref('rooms/'+roomCode);
         isHost = true;
         const seed = Math.floor(Math.random()*999999)+1;
-        await roomRef.set({ host:'__host__', state:'lobby', seed, created:Date.now() });
+        await fbTimeout(roomRef.set({ host:'__host__', state:'lobby', seed, created:Date.now() }), 8000);
         document.getElementById('display-code').textContent = roomCode;
         document.getElementById('btn-start').style.display = '';
         document.getElementById('waiting-host').style.display = 'none';
         gameState = 'lobby';
         showScreen('lobby');
         listenToRoom();
-    } catch(e) { showStatus('Kunne ikke opprette spill: '+e.message,true); }
+    } catch(e) {
+        document.getElementById('conn-status').textContent = 'Feil: '+e.message;
+        isHost=false; roomRef=null;
+    }
+    btn.disabled=false; btn.textContent='Opprett spill';
 }
 async function joinRoom() {
     const btn=document.getElementById('btn-join');
@@ -443,22 +456,22 @@ async function joinRoom() {
     try {
         roomRef = db.ref('rooms/'+roomCode);
         showStatus('Sjekker spillkode...',false);
-        const snap = await roomRef.once('value');
-        if(!snap.exists()){showStatus('Finner ikke spillet. Sjekk koden.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
+        const snap = await fbTimeout(roomRef.once('value'), 8000);
+        if(!snap.exists()){showStatus('Finner ikke spillet. Sjekk koden.',true);btn.disabled=false;btn.textContent='Bli med i spill';roomRef=null;return;}
         const data=snap.val();
-        if(data.state!=='lobby'){showStatus('Spillet har allerede startet.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
+        if(data.state!=='lobby'){showStatus('Spillet har allerede startet.',true);btn.disabled=false;btn.textContent='Bli med i spill';roomRef=null;return;}
         myName = safeName(myName);
-        if(data.players&&data.players[myName]){showStatus('Navnet er tatt, prøv et annet.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
+        if(!myName){showStatus('Ugyldig navn.',true);btn.disabled=false;btn.textContent='Bli med i spill';roomRef=null;return;}
+        if(data.players&&data.players[myName]){showStatus('Navnet er tatt, prøv et annet.',true);btn.disabled=false;btn.textContent='Bli med i spill';roomRef=null;return;}
         showStatus('Blir med...',false);
-        await roomRef.child('players/'+myName).set({ worldX:0, dist:0, speed:BASE_SPEED, finished:false, finishTime:null, checkpoint:0 });
-        roomRef.child('players/'+myName).onDisconnect().remove();
+        await fbTimeout(roomRef.child('players/'+myName).set({ worldX:0, dist:0, speed:BASE_SPEED, finished:false, finishTime:null, checkpoint:0 }), 8000);
         document.getElementById('display-code').textContent = roomCode;
         document.getElementById('btn-start').style.display = 'none';
         document.getElementById('waiting-host').style.display = '';
         gameState = 'lobby';
         showScreen('lobby');
         listenToRoom();
-    } catch(e) { showStatus('Feil: '+e.message,true); }
+    } catch(e) { showStatus('Feil: '+e.message,true); roomRef=null; }
     btn.disabled=false; btn.textContent='Bli med i spill';
 }
 
@@ -507,15 +520,17 @@ function startHostSpectate() {
     hideAllScreens();
     const overlay = document.getElementById('host-overlay');
     overlay.classList.add('active');
-    // Setup host canvas inside the track box
-    hostCanvas = document.getElementById('host-canvas');
-    const box = document.querySelector('.host-track');
-    hostW = box.clientWidth;
-    hostH = box.clientHeight;
-    hostCanvas.width = hostW;
-    hostCanvas.height = hostH;
-    hostCtx = hostCanvas.getContext('2d');
-    requestAnimationFrame(hostLoop);
+    // Wait one frame for layout to calculate before reading sizes
+    requestAnimationFrame(()=>{
+        hostCanvas = document.getElementById('host-canvas');
+        const box = document.querySelector('.host-track');
+        hostW = box.clientWidth || 400;
+        hostH = box.clientHeight || 300;
+        hostCanvas.width = hostW;
+        hostCanvas.height = hostH;
+        hostCtx = hostCanvas.getContext('2d');
+        requestAnimationFrame(hostLoop);
+    });
 }
 function hostLoop() {
     if (gameState !== 'racing') return;
@@ -998,8 +1013,17 @@ document.getElementById('btn-join').addEventListener('click',()=>{
     if(!roomCode){showStatus('Skriv inn spillkoden!',true);return;}
     joinRoom();
 });
-function hostStartRace() { roomRef.update({ state: 'racing' }).catch(e=>alert('Kunne ikke starte: '+e.message)); }
-document.getElementById('btn-start').addEventListener('click',()=>{hostStartRace();setupHostFinishListener();});
+function hostStartRace() {
+    const btn=document.getElementById('btn-start');
+    btn.disabled=true; btn.textContent='Starter...';
+    roomRef.update({ state: 'racing' }).then(()=>{
+        setupHostFinishListener();
+    }).catch(e=>{
+        btn.disabled=false; btn.textContent='Start race!';
+        document.getElementById('conn-status').textContent='Feil: '+e.message;
+    });
+}
+document.getElementById('btn-start').addEventListener('click',()=>hostStartRace());
 document.getElementById('btn-again').addEventListener('click',()=>{
     if(roomRef) roomRef.off(); roomRef=null; isHost=false; gameState='menu'; finished=false; otherPlayers={};
     document.getElementById('results-overlay').classList.remove('active');
@@ -1009,6 +1033,13 @@ document.getElementById('btn-again').addEventListener('click',()=>{
 document.getElementById('input-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('input-code').focus();});
 document.getElementById('input-code').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-join').click();});
 document.getElementById('input-code').addEventListener('input',e=>{e.target.value=e.target.value.replace(/[^0-9]/g,'');});
+
+// Connection check on load
+db.ref('.info/connected').on('value', snap => {
+    const el=document.getElementById('conn-status');
+    if(snap.val()===true){ el.textContent=''; }
+    else { el.textContent='Kobler til Firebase...'; el.style.color='#fbbf24'; }
+});
 </script>
 </body>
 </html>
