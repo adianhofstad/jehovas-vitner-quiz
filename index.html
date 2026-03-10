@@ -250,10 +250,23 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
+// Show ALL errors on screen
+window.onerror=function(msg,src,line){
+    const el=document.getElementById('conn-status');
+    if(el) el.textContent='JS-feil: '+msg+' (linje '+line+')';
+    if(el) el.style.color='#f87171';
+};
+window.addEventListener('unhandledrejection',function(e){
+    const el=document.getElementById('conn-status');
+    if(el) el.textContent='Feil: '+(e.reason&&e.reason.message||e.reason||'ukjent');
+    if(el) el.style.color='#f87171';
+});
+
+const DB_URL = 'https://jehovas-vitner-quiz-default-rtdb.europe-west1.firebasedatabase.app';
 const firebaseConfig = {
     apiKey: "AIzaSyAq62AEMz7qVdFZW8Bs89-h2ZZXtrX-1gY",
     authDomain: "jehovas-vitner-quiz.firebaseapp.com",
-    databaseURL: "https://jehovas-vitner-quiz-default-rtdb.europe-west1.firebasedatabase.app",
+    databaseURL: DB_URL,
     projectId: "jehovas-vitner-quiz",
     storageBucket: "jehovas-vitner-quiz.firebasestorage.app",
     messagingSenderId: "357163951154",
@@ -416,6 +429,18 @@ function fbTimeout(promise, ms){
         new Promise((_,rej)=>setTimeout(()=>rej(new Error('Tidsavbrudd - sjekk internett')),ms))
     ]);
 }
+// REST API helpers (fallback if SDK WebSocket fails)
+async function fbRest(path,method,data){
+    const url=DB_URL+path+'.json';
+    const opts={method:method||'GET'};
+    if(data!==undefined) opts.body=JSON.stringify(data);
+    const res=await fetch(url,opts);
+    if(!res.ok) throw new Error('Firebase REST feil: '+res.status);
+    return res.json();
+}
+async function fbRead(path){ return fbRest(path,'GET'); }
+async function fbWrite(path,data){ return fbRest(path,'PUT',data); }
+async function fbUpdate(path,data){ return fbRest(path,'PATCH',data); }
 
 // World to screen: camera follows a target worldX and dist
 function toScreen(worldX, dist, camWorldX, camDist) {
@@ -434,10 +459,11 @@ async function createRoom() {
     try {
         myName = '__host__';
         roomCode = generateCode();
-        roomRef = db.ref('rooms/'+roomCode);
         isHost = true;
         const seed = Math.floor(Math.random()*999999)+1;
-        await fbTimeout(roomRef.set({ host:'__host__', state:'lobby', seed, created:Date.now() }), 8000);
+        // Use REST API (works even if WebSocket is blocked)
+        await fbWrite('/rooms/'+roomCode, { host:'__host__', state:'lobby', seed, created:Date.now() });
+        roomRef = db.ref('rooms/'+roomCode);
         document.getElementById('display-code').textContent = roomCode;
         document.getElementById('btn-start').style.display = '';
         document.getElementById('waiting-host').style.display = 'none';
@@ -454,61 +480,79 @@ async function joinRoom() {
     const btn=document.getElementById('btn-join');
     btn.disabled=true; btn.textContent='Kobler til...';
     try {
-        roomRef = db.ref('rooms/'+roomCode);
         showStatus('Sjekker spillkode...',false);
-        const snap = await fbTimeout(roomRef.once('value'), 8000);
-        if(!snap.exists()){showStatus('Finner ikke spillet. Sjekk koden.',true);btn.disabled=false;btn.textContent='Bli med i spill';roomRef=null;return;}
-        const data=snap.val();
-        if(data.state!=='lobby'){showStatus('Spillet har allerede startet.',true);btn.disabled=false;btn.textContent='Bli med i spill';roomRef=null;return;}
+        // Use REST API for reliability
+        const data = await fbRead('/rooms/'+roomCode);
+        if(!data){showStatus('Finner ikke spillet. Sjekk koden.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
+        if(data.state!=='lobby'){showStatus('Spillet har allerede startet.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
         myName = safeName(myName);
-        if(!myName){showStatus('Ugyldig navn.',true);btn.disabled=false;btn.textContent='Bli med i spill';roomRef=null;return;}
-        if(data.players&&data.players[myName]){showStatus('Navnet er tatt, prøv et annet.',true);btn.disabled=false;btn.textContent='Bli med i spill';roomRef=null;return;}
+        if(!myName){showStatus('Ugyldig navn.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
+        if(data.players&&data.players[myName]){showStatus('Navnet er tatt, prøv et annet.',true);btn.disabled=false;btn.textContent='Bli med i spill';return;}
         showStatus('Blir med...',false);
-        await fbTimeout(roomRef.child('players/'+myName).set({ worldX:0, dist:0, speed:BASE_SPEED, finished:false, finishTime:null, checkpoint:0 }), 8000);
+        await fbWrite('/rooms/'+roomCode+'/players/'+myName, { worldX:0, dist:0, speed:BASE_SPEED, finished:false, finishTime:null, checkpoint:0 });
+        roomRef = db.ref('rooms/'+roomCode);
         document.getElementById('display-code').textContent = roomCode;
         document.getElementById('btn-start').style.display = 'none';
         document.getElementById('waiting-host').style.display = '';
         gameState = 'lobby';
         showScreen('lobby');
         listenToRoom();
-    } catch(e) { showStatus('Feil: '+e.message,true); roomRef=null; }
+    } catch(e) { showStatus('Feil: '+e.message,true); }
     btn.disabled=false; btn.textContent='Bli med i spill';
 }
 
 // ================================================================
 // ROOM LISTENER
 // ================================================================
-function listenToRoom() {
-    roomRef.on('value', snap => {
-        const data=snap.val(); if(!data) return;
-        const players = data.players||{};
-        const names = Object.keys(players);
-        document.getElementById('player-list').innerHTML = names.map(n =>
-            '<div class="player-badge" style="background:'+nameColor(n)+'">'+esc(n)+'</div>'
-        ).join('');
-        document.getElementById('player-count').textContent = names.length;
+let pollInterval=null;
+function handleRoomData(data) {
+    if(!data) return;
+    const players = data.players||{};
+    const names = Object.keys(players);
+    const plEl=document.getElementById('player-list');
+    const pcEl=document.getElementById('player-count');
+    if(plEl) plEl.innerHTML = names.map(n =>
+        '<div class="player-badge" style="background:'+nameColor(n)+'">'+esc(n)+'</div>'
+    ).join('');
+    if(pcEl) pcEl.textContent = names.length;
 
-        // Cache other players (for racer: everyone else; for host: everyone)
-        otherPlayers = {};
+    otherPlayers = {};
+    for (const [n,d] of Object.entries(players)) {
+        if (n !== myName) otherPlayers[n] = d;
+    }
+    if (isHost && names.length > 0) {
+        let best = null, bestDist = -1;
         for (const [n,d] of Object.entries(players)) {
-            if (n !== myName) otherPlayers[n] = d;
+            if ((d.dist||0) > bestDist) { bestDist=d.dist||0; best=n; }
         }
-        // Host picks spectate target: leading player
-        if (isHost && names.length > 0) {
-            let best = null, bestDist = -1;
-            for (const [n,d] of Object.entries(players)) {
-                if ((d.dist||0) > bestDist) { bestDist=d.dist||0; best=n; }
-            }
-            spectateTarget = best;
-        }
+        spectateTarget = best;
+    }
 
-        if (data.state==='racing' && gameState==='lobby') {
-            generateObstacles(data.seed||1);
-            if (isHost) startHostSpectate();
-            else startCountdown();
-        }
-        if (data.state==='finished' && gameState!=='finished') showResults(data);
-    });
+    if (data.state==='racing' && gameState==='lobby') {
+        generateObstacles(data.seed||1);
+        if (isHost) startHostSpectate();
+        else startCountdown();
+    }
+    if (data.state==='finished' && gameState!=='finished') showResults(data);
+}
+function listenToRoom() {
+    // Try SDK listener
+    let sdkWorking=false;
+    if(roomRef) {
+        roomRef.on('value', snap => {
+            sdkWorking=true;
+            handleRoomData(snap.val());
+        });
+    }
+    // Also start REST polling as fallback
+    if(pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(async()=>{
+        if(sdkWorking) return; // SDK is working, skip polling
+        try {
+            const data = await fbRead('/rooms/'+roomCode);
+            handleRoomData(data);
+        } catch(e){}
+    }, gameState==='racing'?300:2000);
 }
 
 // ================================================================
@@ -715,15 +759,15 @@ function update() {
     if(car.dist>=FINISH_DIST&&!finished){
         finished=true;
         finishTime=(performance.now()-raceStartTime)/1000;
-        roomRef.child('players/'+myName).update({finished:true,finishTime});
+        fbUpdate('/rooms/'+roomCode+'/players/'+myName,{finished:true,finishTime}).catch(()=>{});
     }
     // Sync
     if(now-lastSync>SYNC_INTERVAL){
         lastSync=now;
-        roomRef.child('players/'+myName).update({
+        fbUpdate('/rooms/'+roomCode+'/players/'+myName,{
             worldX:Math.round(car.worldX), dist:Math.round(car.dist),
             speed:car.speed, checkpoint:nextCheckpoint
-        });
+        }).catch(()=>{});
     }
 }
 
@@ -779,7 +823,7 @@ function handleQuizAnswer(cpIndex, ans) {
         document.getElementById('quiz-overlay').classList.remove('active');
         nextCheckpoint=cpIndex+1; gameState='racing';
         showMobileControls(true);
-        roomRef.child('players/'+myName).update({checkpoint:nextCheckpoint});
+        fbUpdate('/rooms/'+roomCode+'/players/'+myName,{checkpoint:nextCheckpoint}).catch(()=>{});
     },1500);
 }
 
@@ -787,10 +831,12 @@ function handleQuizAnswer(cpIndex, ans) {
 // FINISH & RESULTS
 // ================================================================
 async function checkAllFinished(){
-    const snap=await roomRef.child('players').once('value');
-    const p=snap.val()||{};
-    const vals=Object.values(p);
-    if(vals.length>0 && vals.every(v=>v.finished)) roomRef.update({state:'finished'});
+    try {
+        const p=await fbRead('/rooms/'+roomCode+'/players');
+        if(!p) return;
+        const vals=Object.values(p);
+        if(vals.length>0 && vals.every(v=>v.finished)) await fbUpdate('/rooms/'+roomCode,{state:'finished'});
+    } catch(e){}
 }
 function setupHostFinishListener(){
     if(!isHost||!roomRef)return;
@@ -1013,15 +1059,16 @@ document.getElementById('btn-join').addEventListener('click',()=>{
     if(!roomCode){showStatus('Skriv inn spillkoden!',true);return;}
     joinRoom();
 });
-function hostStartRace() {
+async function hostStartRace() {
     const btn=document.getElementById('btn-start');
     btn.disabled=true; btn.textContent='Starter...';
-    roomRef.update({ state: 'racing' }).then(()=>{
+    try {
+        await fbUpdate('/rooms/'+roomCode, { state: 'racing' });
         setupHostFinishListener();
-    }).catch(e=>{
+    } catch(e) {
         btn.disabled=false; btn.textContent='Start race!';
         document.getElementById('conn-status').textContent='Feil: '+e.message;
-    });
+    }
 }
 document.getElementById('btn-start').addEventListener('click',()=>hostStartRace());
 document.getElementById('btn-again').addEventListener('click',()=>{
