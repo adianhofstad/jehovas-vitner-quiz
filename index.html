@@ -57,8 +57,15 @@
             font-size: 2.8rem; font-weight: 900; letter-spacing: 10px;
             background: rgba(255,255,255,.08); padding: 12px 28px; border-radius: 14px;
         }
-        .player-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:600px; }
-        .player-badge { padding:7px 18px; border-radius:20px; font-weight:600; font-size:.9rem; animation:popIn .3s ease; }
+        .player-list { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:600px; }
+        .player-badge {
+            display:flex; flex-direction:column; align-items:center; gap:6px;
+            padding:10px 14px 8px; border-radius:12px;
+            background:rgba(255,255,255,.07); border:2px solid;
+            font-weight:600; font-size:.85rem; animation:popIn .3s ease;
+            min-width:80px;
+        }
+        .player-badge img { width:48px; height:48px; object-fit:contain; image-rendering:pixelated; }
 
         /* Quiz overlay */
         #quiz-overlay {
@@ -466,6 +473,7 @@ const QUIZ_TIME = 8000; // 8 seconds
 // Audio
 let audioCtx = null, masterGain = null, engineOsc = null, engineGain = null, engineFilter = null;
 let audioInited = false;
+let bgMusicInterval = null, bgMusicGain = null;
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -638,6 +646,43 @@ function stopEngine(){
     if(engineOsc){ try{engineOsc.stop();}catch(e){} engineOsc=null; }
 }
 
+// Background music (chiptune loop via Web Audio)
+function startBgMusic(mode){
+    stopBgMusic();
+    if(!audioCtx) return;
+    bgMusicGain = audioCtx.createGain();
+    bgMusicGain.gain.value = mode==='race' ? 0.07 : 0.05;
+    bgMusicGain.connect(masterGain);
+
+    // Melodies: lobby = chill arpeggios, race = upbeat
+    const lobbyNotes = [262,330,392,523,392,330, 294,370,440,587,440,370, 262,330,392,523,392,330, 247,311,370,494,370,311];
+    const raceNotes  = [523,659,784,659,523,784, 587,740,880,740,587,880, 523,659,784,1047,784,659, 494,622,740,988,740,622];
+    const notes = mode==='race' ? raceNotes : lobbyNotes;
+    const tempo = mode==='race' ? 130 : 180;
+    let step = 0;
+
+    function playNote(){
+        if(!audioCtx||!bgMusicGain) return;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = mode==='race' ? 'square' : 'triangle';
+        osc.frequency.value = notes[step % notes.length];
+        const dur = 60/tempo;
+        g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur*0.9);
+        osc.connect(g); g.connect(bgMusicGain);
+        osc.start(); osc.stop(audioCtx.currentTime + dur);
+        step++;
+    }
+
+    playNote();
+    bgMusicInterval = setInterval(playNote, (60/tempo)*1000);
+}
+function stopBgMusic(){
+    if(bgMusicInterval){ clearInterval(bgMusicInterval); bgMusicInterval=null; }
+    if(bgMusicGain){ try{bgMusicGain.disconnect();}catch(e){} bgMusicGain=null; }
+}
+
 // ================================================================
 // CREATE / JOIN ROOM
 // ================================================================
@@ -657,6 +702,7 @@ async function createRoom() {
         document.getElementById('waiting-host').style.display = 'none';
         gameState = 'lobby';
         showScreen('lobby');
+        startBgMusic('lobby');
         listenToRoom();
     } catch(e) {
         document.getElementById('conn-status').textContent = 'Feil: '+e.message;
@@ -699,9 +745,16 @@ function handleRoomData(data) {
     const names = Object.keys(players);
     const plEl=document.getElementById('player-list');
     const pcEl=document.getElementById('player-count');
-    if(plEl) plEl.innerHTML = names.map(n =>
-        '<div class="player-badge" style="background:'+nameColor(n)+'">'+esc(n)+'</div>'
-    ).join('');
+    if(plEl) {
+        const charSrcs={luke:dogImg.src,asta:astaImg.src,kasper:kasperImg.src};
+        plEl.innerHTML = names.map(n => {
+            const ch = (players[n]&&players[n].character)||'luke';
+            const src = charSrcs[ch]||charSrcs.luke;
+            return '<div class="player-badge" style="border-color:'+nameColor(n)+';color:'+nameColor(n)+'">'
+                +'<img src="'+src+'">'
+                +'<span>'+esc(n)+'</span></div>';
+        }).join('');
+    }
     if(pcEl) pcEl.textContent = names.length;
 
     otherPlayers = {};
@@ -750,6 +803,7 @@ function listenToRoom() {
 let hostCanvas, hostCtx, hostW, hostH;
 function startHostSpectate() {
     gameState = 'racing';
+    startBgMusic('race');
     hideAllScreens();
     const overlay = document.getElementById('host-overlay');
     overlay.classList.add('active');
@@ -888,7 +942,7 @@ function startCountdown() {
         count--;
         if(count>0){ ov.textContent=count; playCountdownBeep(false); }
         else if(count===0){ ov.textContent='KJ\u00D8R!'; playCountdownBeep(true); }
-        else { clearInterval(iv); ov.classList.remove('active'); gameState='racing'; raceStartTime=performance.now(); showMobileControls(true); startEngine(); requestAnimationFrame(gameLoop); }
+        else { clearInterval(iv); ov.classList.remove('active'); gameState='racing'; raceStartTime=performance.now(); showMobileControls(true); startEngine(); startBgMusic('race'); requestAnimationFrame(gameLoop); }
     },800);
 }
 
@@ -1161,6 +1215,7 @@ function setupHostFinishListener(){
 function showResults(data){
     gameState='finished';
     stopEngine();
+    stopBgMusic();
     showMobileControls(false); hideAllScreens();
     document.getElementById('quiz-overlay').classList.remove('active');
     document.getElementById('host-overlay').classList.remove('active');
@@ -1485,6 +1540,7 @@ document.getElementById('btn-confirm-char').addEventListener('click',async()=>{
     await fbUpdate('/rooms/'+roomCode+'/players/'+myName,{character:myCharacter});
     gameState='lobby';
     showScreen('lobby');
+    startBgMusic('lobby');
 });
 async function hostStartRace() {
     const btn=document.getElementById('btn-start');
@@ -1499,7 +1555,7 @@ async function hostStartRace() {
 }
 document.getElementById('btn-start').addEventListener('click',()=>hostStartRace());
 document.getElementById('btn-again').addEventListener('click',()=>{
-    if(roomRef) roomRef.off(); roomRef=null; isHost=false; gameState='menu'; finished=false; otherPlayers={};
+    if(roomRef) roomRef.off(); roomRef=null; isHost=false; gameState='menu'; finished=false; otherPlayers={}; stopBgMusic();
     document.getElementById('results-overlay').classList.remove('active');
     document.getElementById('host-overlay').classList.remove('active');
     showScreen('start');
