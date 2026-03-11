@@ -1269,7 +1269,7 @@ function showResults(data){
 function render() {
     ctx.clearRect(0,0,W,H);
     if(gameState!=='racing'&&gameState!=='checkpoint') return;
-    const camX=car.worldX, camD=car.dist;
+    const camX=roadCenterX(car.dist), camD=car.dist;
     // Screen shake
     ctx.save();
     if(screenShakeAmt>0.5){
