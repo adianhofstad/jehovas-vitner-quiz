@@ -217,18 +217,21 @@
         .char-card.selected { border-color:#ff6b35; background:rgba(255,107,53,.15); box-shadow:0 0 20px rgba(255,107,53,.25); }
         .char-card img { width:80px; height:auto; image-rendering:pixelated; }
         .char-card .char-name { font-weight:800; font-size:1.1rem; }
-        .char-card.locked { opacity:.45; filter:grayscale(1); position:relative; pointer-events:none; }
+        .char-card.locked { opacity:.45; filter:grayscale(1); position:relative; cursor:pointer; }
         .char-card.locked::after { content:'\1F512'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:2rem; }
         .char-card.unlocked-anim { animation:unlockPop .6s ease; }
         @keyframes unlockPop { 0%{transform:scale(1)} 50%{transform:scale(1.15);box-shadow:0 0 30px rgba(255,215,0,.6)} 100%{transform:scale(1)} }
-        .promo-section { margin:16px 0 0; display:flex; gap:8px; justify-content:center; align-items:center; }
-        .promo-section input { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:10px; color:#fff; padding:10px 14px; font-size:.95rem; width:180px; text-align:center; font-family:inherit; letter-spacing:2px; text-transform:uppercase; }
-        .promo-section input::placeholder { color:rgba(255,255,255,.3); letter-spacing:1px; text-transform:none; }
-        .promo-section input:focus { outline:none; border-color:#ff6b35; }
-        .promo-section button { background:linear-gradient(135deg,#ff6b35,#ff4500); border:none; color:#fff; padding:10px 18px; border-radius:10px; font-weight:700; font-size:.9rem; cursor:pointer; font-family:inherit; }
-        .promo-msg { text-align:center; font-size:.85rem; margin-top:6px; min-height:20px; }
-        .promo-msg.success { color:#4ade80; }
-        .promo-msg.error { color:#f87171; }
+        .code-popup { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.7); z-index:999; align-items:center; justify-content:center; }
+        .code-popup.active { display:flex; }
+        .code-popup-inner { background:#1a1a2e; border:2px solid rgba(255,255,255,.12); border-radius:18px; padding:28px 32px; text-align:center; max-width:320px; width:90%; }
+        .code-popup-inner h3 { font-size:1.1rem; margin-bottom:4px; }
+        .code-popup-inner p { font-size:.85rem; color:rgba(255,255,255,.5); margin-bottom:16px; }
+        .code-popup-inner input { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:10px; color:#fff; padding:10px 14px; font-size:1rem; width:100%; text-align:center; font-family:inherit; letter-spacing:3px; text-transform:uppercase; box-sizing:border-box; }
+        .code-popup-inner input:focus { outline:none; border-color:#ff6b35; }
+        .code-popup-btn { background:linear-gradient(135deg,#ff6b35,#ff4500); border:none; color:#fff; padding:10px 24px; border-radius:10px; font-weight:700; font-size:.95rem; cursor:pointer; font-family:inherit; margin-top:12px; width:100%; }
+        .code-popup-msg { font-size:.85rem; margin-top:10px; min-height:20px; }
+        .code-popup-msg.error { color:#f87171; }
+        .code-popup-close { position:absolute; top:16px; right:20px; background:none; border:none; color:rgba(255,255,255,.5); font-size:1.5rem; cursor:pointer; }
 
         @media(max-width:700px){
             h1{font-size:1.6rem}
@@ -261,9 +264,16 @@
     <h1>Velg karakter</h1>
     <p class="subtitle">Hvem vil du race som?</p>
     <div class="char-grid" id="char-grid"></div>
-    <div class="promo-section"><input type="text" id="input-promo" placeholder="Promokode" maxlength="20" autocomplete="off"><button id="btn-promo">Lås opp</button></div>
-    <div class="promo-msg" id="promo-msg"></div>
     <button class="btn btn-primary" id="btn-confirm-char" style="opacity:.4;pointer-events:none">Velg</button>
+</div>
+<div class="code-popup" id="code-popup">
+    <div class="code-popup-inner">
+        <h3>Hemmelig karakter</h3>
+        <p>Skriv inn kode for å låse opp</p>
+        <input type="text" id="input-promo" maxlength="20" autocomplete="off" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
+        <button class="code-popup-btn" id="btn-promo">Lås opp</button>
+        <div class="code-popup-msg" id="promo-msg"></div>
+    </div>
 </div>
 
 <!-- LOBBY -->
@@ -1592,7 +1602,15 @@ function populateCharSelect(){
         card.className='char-card' + (isLocked ? ' locked' : '');
         card.dataset.key=key;
         card.innerHTML='<img src="'+srcs[key]+'"><div class="char-name">'+ch.name+'</div>';
-        if(!isLocked){
+        if(isLocked){
+            card.onclick=()=>{
+                document.getElementById('input-promo').value='';
+                document.getElementById('promo-msg').textContent='';
+                document.getElementById('promo-msg').className='code-popup-msg';
+                document.getElementById('code-popup').classList.add('active');
+                setTimeout(()=>document.getElementById('input-promo').focus(),100);
+            };
+        } else {
             card.onclick=()=>{
                 myCharacter=key;
                 grid.querySelectorAll('.char-card').forEach(c=>c.classList.remove('selected'));
@@ -1614,22 +1632,18 @@ document.getElementById('btn-promo').addEventListener('click',()=>{
     const charKey=PROMO_CODES[code];
     if(charKey && !unlockedChars.has(charKey)){
         unlockedChars.add(charKey);
-        msg.textContent='\u2705 '+CHARACTERS[charKey].name+' er nå låst opp!';
-        msg.className='promo-msg success';
-        input.value='';
-        // Re-render grid and animate unlocked card
+        document.getElementById('code-popup').classList.remove('active');
         populateCharSelect();
         const unlocked=document.querySelector('.char-card[data-key="'+charKey+'"]');
         if(unlocked) unlocked.classList.add('unlocked-anim');
-    } else if(unlockedChars.has(charKey)){
-        msg.textContent='Allerede låst opp!';
-        msg.className='promo-msg success';
     } else {
-        msg.textContent='\u274C Ugyldig kode';
-        msg.className='promo-msg error';
+        msg.textContent='Feil kode';
+        msg.className='code-popup-msg error';
+        input.value='';
     }
 });
 document.getElementById('input-promo').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-promo').click();});
+document.getElementById('code-popup').addEventListener('click',e=>{if(e.target.id==='code-popup')e.target.classList.remove('active');});
 document.getElementById('btn-confirm-char').addEventListener('click',async()=>{
     await fbUpdate('/rooms/'+roomCode+'/players/'+myName,{character:myCharacter});
     gameState='lobby';
