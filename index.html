@@ -420,8 +420,8 @@ function selectQuestions(seed) {
 const TRACK_LENGTH = 48000;
 const ROAD_W = 210;
 const CAR_W = 26, CAR_H = 46;
-const BASE_SPEED = 3.0;
-const BOOST_SPEED = 6.0;
+const BASE_SPEED = 4.2;
+const BOOST_SPEED = 8.0;
 const GRASS_SLOW = 1.0;
 const STEER_SPEED = 3.8;
 const CHECKPOINT_DISTS = [4500,9000,14000,19000,24000,29000,33500,38000,42500,46000];
@@ -1378,7 +1378,14 @@ function render() {
     // Penalty overlays
     if(activePenalty==='ink'&&now<penaltyEndTime){
         const a=Math.min(1,(penaltyEndTime-now)/1000);
-        for(const b of inkBlobs){ctx.fillStyle='rgba(10,10,20,'+(0.85*a)+')';ctx.beginPath();ctx.ellipse(b.x,b.y,b.r,b.r*.7,0,0,Math.PI*2);ctx.fill();}
+        ctx.fillStyle='rgba(0,0,0,'+(0.92*a)+')';ctx.fillRect(0,0,W,H);
+        const holeR=Math.min(W,H)*0.12;
+        const cx=W/2+Math.sin(now/300)*30,cy=H/2+Math.cos(now/250)*20;
+        ctx.save();ctx.globalCompositeOperation='destination-out';
+        const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,holeR);
+        grad.addColorStop(0,'rgba(0,0,0,1)');grad.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);ctx.restore();
+        ctx.fillStyle='rgba(255,255,255,'+(0.3*a)+')';ctx.font='700 18px Montserrat';ctx.textAlign='center';ctx.fillText('BLEKET!',W/2,34);
     }
     if(activePenalty==='reverse'&&now<penaltyEndTime){ctx.fillStyle='rgba(239,83,80,.12)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#ef5350';ctx.font='700 15px Montserrat';ctx.textAlign='center';ctx.fillText('\u2194 OMVENDTE KONTROLLER',W/2,34);}
     if(activePenalty==='slow'&&now<penaltyEndTime){ctx.fillStyle='rgba(100,149,237,.1)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#6495ed';ctx.font='700 15px Montserrat';ctx.textAlign='center';ctx.fillText('\u23F3 SLOW MOTION',W/2,34);}
