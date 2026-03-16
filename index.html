@@ -316,6 +316,7 @@
 <!-- MOBILE CONTROLS -->
 <div id="mobile-controls">
     <button class="ctrl-btn" id="ctrl-left">&larr;</button>
+    <button class="ctrl-btn" id="ctrl-fire" style="display:none;background:rgba(255,215,0,.3);border-color:#ffd700;font-size:1.2rem">&#x1F4A3;</button>
     <button class="ctrl-btn" id="ctrl-right">&rarr;</button>
 </div>
 
@@ -528,6 +529,9 @@ let spectateTarget = null;
 // Power-up state
 let hasShield = false, shieldPulse = 0;
 let coinCount = 0, coinBoostEnd = 0;
+// Cannon system
+let hasCannon = false, cannonBalls = [], explosions = [];
+const CANNON_SPEED = 12, CANNON_RADIUS = 6, EXPLOSION_RADIUS = 30;
 // Visual juice state
 let screenShakeAmt = 0, screenShakeDecay = 0.92;
 let boostParticles = [], confettiParticles = [];
@@ -835,6 +839,17 @@ function handleRoomData(data) {
     for (const [n,d] of Object.entries(players)) {
         if (n !== myName) otherPlayers[n] = d;
     }
+    // Check if we got hit by a cannon
+    const me=players[myName];
+    if(me&&me.hit&&me.hit!==car._lastHit&&gameState==='racing'){
+        car._lastHit=me.hit;
+        const cpBack=nextCheckpoint>0?nextCheckpoint-1:0;
+        car.dist=cpBack>0?CHECKPOINT_DISTS[cpBack-1]:0;
+        car.worldX=roadCenterX(car.dist);
+        screenShakeAmt=10;
+        spawnExplosion(car.worldX,car.dist+30);
+        playCrashSound();
+    }
     if (isHost && names.length > 0) {
         let best = null, bestDist = -1;
         for (const [n,d] of Object.entries(players)) {
@@ -1005,7 +1020,7 @@ function startCountdown() {
     car.worldX = roadCenterX(0);
     car.dist=0; car.speed=BASE_SPEED;
     nextCheckpoint=0; finished=false; finishTime=null;
-    activePenalty=null; penaltyEndTime=0; boostEndTime=0; inkBlobs=[];
+    activePenalty=null; penaltyEndTime=0; boostEndTime=0; inkBlobs=[]; hasCannon=false; cannonBalls=[]; explosions=[];
     // Reset power-up & visual states
     hasShield=false; shieldPulse=0; coinCount=0; coinBoostEnd=0;
     screenShakeAmt=0; boostParticles=[]; confettiParticles=[];
@@ -1027,8 +1042,61 @@ document.getElementById('ctrl-left').addEventListener('touchstart',e=>{e.prevent
 document.getElementById('ctrl-left').addEventListener('touchend',e=>{e.preventDefault();steerLeft=false;});
 document.getElementById('ctrl-right').addEventListener('touchstart',e=>{e.preventDefault();steerRight=true;});
 document.getElementById('ctrl-right').addEventListener('touchend',e=>{e.preventDefault();steerRight=false;});
-window.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();steerLeft=true;}if(e.key==='ArrowRight'){e.preventDefault();steerRight=true;}if(e.key==='ArrowUp'||e.key==='ArrowDown')e.preventDefault();});
+document.getElementById('ctrl-fire').addEventListener('touchstart',e=>{e.preventDefault();if(hasCannon&&gameState==='racing')fireCannon();});
+window.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();steerLeft=true;}if(e.key==='ArrowRight'){e.preventDefault();steerRight=true;}if(e.key==='ArrowUp'||e.key==='ArrowDown')e.preventDefault();if(e.key===' '&&hasCannon&&gameState==='racing'){e.preventDefault();fireCannon();}});
 window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'){e.preventDefault();steerLeft=false;}if(e.key==='ArrowRight'){e.preventDefault();steerRight=false;}});
+
+// ================================================================
+// CANNON SYSTEM
+// ================================================================
+function fireCannon(){
+    if(!hasCannon) return;
+    hasCannon=false;
+    playCrashSound();
+    cannonBalls.push({worldX:car.worldX, dist:car.dist+CAR_H/2, speed:CANNON_SPEED, alive:true});
+    // Sync cannon fire to other players
+    fbUpdate('/rooms/'+roomCode+'/players/'+myName,{cannon:{worldX:Math.round(car.worldX),dist:Math.round(car.dist+CAR_H/2),time:Date.now()}}).catch(()=>{});
+}
+function spawnExplosion(worldX,dist){
+    explosions.push({worldX,dist,startTime:performance.now(),duration:600});
+    screenShakeAmt=4;
+}
+function updateCannons(){
+    const now=performance.now();
+    // Update cannonballs
+    for(let i=cannonBalls.length-1;i>=0;i--){
+        const cb=cannonBalls[i];
+        if(!cb.alive){cannonBalls.splice(i,1);continue;}
+        cb.dist+=cb.speed;
+        // Out of bounds (too far ahead or off road)
+        const rc=roadCenterX(cb.dist);
+        const offRoad=Math.abs(cb.worldX-rc)-ROAD_W/2;
+        if(cb.dist>car.dist+800||cb.dist<car.dist-100||offRoad>40){
+            spawnExplosion(cb.worldX,cb.dist);cb.alive=false;continue;
+        }
+        // Hit obstacle
+        let hitObs=false;
+        for(const obs of obstacles){
+            if(Math.abs(cb.dist-obs.dist)<15&&Math.abs(cb.worldX-obs.worldX)<20){hitObs=true;break;}
+        }
+        if(hitObs){spawnExplosion(cb.worldX,cb.dist);cb.alive=false;continue;}
+        // Hit other player
+        for(const [name,d] of Object.entries(otherPlayers)){
+            if(Math.abs(cb.dist-(d.dist||0))<CAR_H&&Math.abs(cb.worldX-(d.worldX||0))<CAR_W){
+                spawnExplosion(cb.worldX,cb.dist);cb.alive=false;
+                // Send hit to Firebase - target goes back to last checkpoint
+                const cp=d.checkpoint||0;
+                const sendBackDist=cp>0?CHECKPOINT_DISTS[cp-1]:0;
+                fbUpdate('/rooms/'+roomCode+'/players/'+name,{dist:sendBackDist,hit:Date.now()}).catch(()=>{});
+                break;
+            }
+        }
+    }
+    // Clean up old explosions
+    for(let i=explosions.length-1;i>=0;i--){
+        if(now-explosions[i].startTime>explosions[i].duration) explosions.splice(i,1);
+    }
+}
 
 // ================================================================
 // GAME LOOP
@@ -1142,6 +1210,9 @@ function update() {
         if(speedLines[i].life<=0||speedLines[i].y>H+20) speedLines.splice(i,1);
     }
 
+    // Update cannons
+    updateCannons();
+
     // Checkpoint flash decay
     if(checkpointFlashAlpha>0) checkpointFlashAlpha-=0.03;
 
@@ -1246,11 +1317,17 @@ function handleQuizAnswer(cpIndex, ans) {
     const answerTime=now-quizTimerStart;
     if(ans===q.correct){
         playCorrectSound();
-        // Faster answer = longer boost (up to 5s for instant, 3.5s minimum)
         const fastBonus=Math.max(0, 1-answerTime/QUIZ_TIME)*1500;
-        fb.textContent='Riktig! Speed boost!'+(fastBonus>500?' (Rask!)':'');
-        fb.style.background='rgba(74,222,128,.2)'; fb.style.color='#4ade80';
-        boostEndTime=now+3500+fastBonus;
+        if(Math.random()<0.45&&!hasCannon){
+            hasCannon=true;
+            fb.textContent='Riktig! Du fikk en kanon! Trykk SPACE for å skyte!'+(fastBonus>500?' (Rask!)':'');
+            fb.style.background='rgba(255,215,0,.2)'; fb.style.color='#ffd700';
+            boostEndTime=now+2000+fastBonus;
+        } else {
+            fb.textContent='Riktig! Speed boost!'+(fastBonus>500?' (Rask!)':'');
+            fb.style.background='rgba(74,222,128,.2)'; fb.style.color='#4ade80';
+            boostEndTime=now+3500+fastBonus;
+        }
     } else {
         playWrongSound();
         const p=PENALTIES[Math.floor(Math.random()*PENALTIES.length)];
@@ -1332,6 +1409,36 @@ function render() {
     let rot=carTilt;
     if(activePenalty==='spin'&&now<penaltyEndTime) rot=((now%400)/400)*Math.PI*2;
     drawCar(myPos.x,myPos.y,nameColor(myName),1,myName,rot,myCharacter);
+    // Cannonballs
+    for(const cb of cannonBalls){
+        if(!cb.alive) continue;
+        const cp=toScreen(cb.worldX,cb.dist,camX,camD);
+        if(cp.y<-20||cp.y>H+20) continue;
+        ctx.fillStyle='#222';ctx.beginPath();ctx.arc(cp.x,cp.y,CANNON_RADIUS,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#555';ctx.beginPath();ctx.arc(cp.x-2,cp.y-2,CANNON_RADIUS*0.4,0,Math.PI*2);ctx.fill();
+        // Trail
+        ctx.fillStyle='rgba(255,140,0,0.4)';ctx.beginPath();ctx.arc(cp.x,cp.y+8,4,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(255,80,0,0.2)';ctx.beginPath();ctx.arc(cp.x,cp.y+14,3,0,Math.PI*2);ctx.fill();
+    }
+    // Explosions
+    const now2=performance.now();
+    for(const ex of explosions){
+        const ep=toScreen(ex.worldX,ex.dist,camX,camD);
+        const t=(now2-ex.startTime)/ex.duration;
+        if(t>1) continue;
+        const r=EXPLOSION_RADIUS*(0.5+t*0.5);
+        const a=1-t;
+        ctx.fillStyle='rgba(255,100,0,'+a*0.6+')';ctx.beginPath();ctx.arc(ep.x,ep.y,r,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(255,200,50,'+a*0.4+')';ctx.beginPath();ctx.arc(ep.x,ep.y,r*0.6,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(255,255,200,'+a*0.3+')';ctx.beginPath();ctx.arc(ep.x,ep.y,r*0.3,0,Math.PI*2);ctx.fill();
+    }
+    // Cannon HUD indicator
+    if(hasCannon){
+        ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(W-110,H-40,105,32);
+        ctx.fillStyle='#ffd700';ctx.font='700 13px Montserrat';ctx.textAlign='right';
+        ctx.fillText('\uD83D\uDCA3 SPACE = Skyt!',W-10,H-19);
+    }
+    document.getElementById('ctrl-fire').style.display=hasCannon?'':'none';
     // Shield glow
     if(hasShield){
         const sr=32+Math.sin(shieldPulse)*4;
