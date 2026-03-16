@@ -613,11 +613,18 @@ function fbTimeout(promise, ms){
 // REST API helpers (fallback if SDK WebSocket fails)
 async function fbRest(path,method,data){
     const url=DB_URL+path+'.json';
-    const opts={method:method||'GET'};
+    const opts={method:method||'GET',headers:{'Content-Type':'application/json'}};
     if(data!==undefined) opts.body=JSON.stringify(data);
-    const res=await fetch(url,opts);
-    if(!res.ok) throw new Error('Firebase REST feil: '+res.status);
-    return res.json();
+    for(let attempt=0;attempt<3;attempt++){
+        try{
+            const res=await fetch(url,opts);
+            if(!res.ok) throw new Error('Firebase REST feil: '+res.status);
+            return res.json();
+        }catch(e){
+            if(attempt===2) throw new Error('Kunne ikke koble til server. Sjekk internett og prøv igjen.');
+            await new Promise(r=>setTimeout(r,1000*(attempt+1)));
+        }
+    }
 }
 async function fbRead(path){ return fbRest(path,'GET'); }
 async function fbWrite(path,data){ return fbRest(path,'PUT',data); }
