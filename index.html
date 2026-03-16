@@ -1020,8 +1020,8 @@ document.getElementById('ctrl-left').addEventListener('touchstart',e=>{e.prevent
 document.getElementById('ctrl-left').addEventListener('touchend',e=>{e.preventDefault();steerLeft=false;});
 document.getElementById('ctrl-right').addEventListener('touchstart',e=>{e.preventDefault();steerRight=true;});
 document.getElementById('ctrl-right').addEventListener('touchend',e=>{e.preventDefault();steerRight=false;});
-window.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')steerLeft=true;if(e.key==='ArrowRight')steerRight=true;});
-window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft')steerLeft=false;if(e.key==='ArrowRight')steerRight=false;});
+window.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();steerLeft=true;}if(e.key==='ArrowRight'){e.preventDefault();steerRight=true;}if(e.key==='ArrowUp'||e.key==='ArrowDown')e.preventDefault();});
+window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'){e.preventDefault();steerLeft=false;}if(e.key==='ArrowRight'){e.preventDefault();steerRight=false;}});
 
 // ================================================================
 // GAME LOOP
