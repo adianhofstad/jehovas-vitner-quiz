@@ -843,12 +843,18 @@ function handleRoomData(data) {
     const me=players[myName];
     if(me&&me.hit&&me.hit!==car._lastHit&&gameState==='racing'){
         car._lastHit=me.hit;
-        const cpBack=nextCheckpoint>0?nextCheckpoint-1:0;
-        car.dist=cpBack>0?CHECKPOINT_DISTS[cpBack-1]:0;
-        car.worldX=roadCenterX(car.dist);
-        screenShakeAmt=10;
-        spawnExplosion(car.worldX,car.dist+30);
-        playCrashSound();
+        if(hasShield){
+            hasShield=false;
+            screenShakeAmt=4;
+            playBoostSound();
+        } else {
+            const cpBack=nextCheckpoint>0?nextCheckpoint-1:0;
+            car.dist=cpBack>0?CHECKPOINT_DISTS[cpBack-1]:0;
+            car.worldX=roadCenterX(car.dist);
+            screenShakeAmt=10;
+            spawnExplosion(car.worldX,car.dist+30);
+            playCrashSound();
+        }
     }
     if (isHost && names.length > 0) {
         let best = null, bestDist = -1;
